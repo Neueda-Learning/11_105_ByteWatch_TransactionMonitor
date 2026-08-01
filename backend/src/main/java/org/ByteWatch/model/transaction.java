@@ -4,10 +4,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Represents a single financial transaction as stored in the
- * {@code transactions} table.
+ * Stage 2 (Transaction Ingestion): immutable transaction facts used by
+ * rule evaluation and downstream alert creation.
  */
-public class transaction {
+public class Transaction {
 
     private String txnId;
     private LocalDateTime timestamp;
@@ -18,10 +18,10 @@ public class transaction {
     private String status;
     private String type;
 
-    public transaction() {
+    public Transaction() {
     }
 
-    public transaction(String txnId, LocalDateTime timestamp, BigDecimal amount, String currency,
+    public Transaction(String txnId, LocalDateTime timestamp, BigDecimal amount, String currency,
                        String payeeAccNum, String payerAccNum, String status, String type) {
         this.txnId = txnId;
         this.timestamp = timestamp;

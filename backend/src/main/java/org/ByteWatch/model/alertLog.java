@@ -3,10 +3,10 @@ package org.ByteWatch.model;
 import java.time.LocalDateTime;
 
 /**
- * Represents a single audit-trail entry recorded every time an
- * alert's status changes, as stored in the {@code alert_log} table.
+ * Stage 4 (Investigation Audit): one immutable audit-trail entry for
+ * each alert status transition.
  */
-public class alertLog {
+public class AlertLog {
 
     private Long id;
     private Long alertId;
@@ -14,10 +14,10 @@ public class alertLog {
     private String status;
     private LocalDateTime logTimestamp;
 
-    public alertLog() {
+    public AlertLog() {
     }
 
-    public alertLog(Long id, Long alertId, String comment, String status, LocalDateTime logTimestamp) {
+    public AlertLog(Long id, Long alertId, String comment, String status, LocalDateTime logTimestamp) {
         this.id = id;
         this.alertId = alertId;
         this.comment = comment;

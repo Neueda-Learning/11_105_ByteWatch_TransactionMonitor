@@ -11,7 +11,7 @@ import java.util.List;
  * transaction and the payer/payee customer context the Risk Manager
  * needs to investigate without extra lookups.
  */
-public class alertDetailDTO {
+public class AlertDetailDTO {
 
     private Long alertId;
     private String status;
@@ -37,9 +37,9 @@ public class alertDetailDTO {
     private String payeeBankName;
 
     // Full audit history (populated for the single-alert detail endpoint)
-    private List<alertLog> auditLogs;
+    private List<AlertLog> auditLogs;
 
-    public alertDetailDTO() {
+    public AlertDetailDTO() {
     }
 
     public Long getAlertId() {
@@ -170,11 +170,11 @@ public class alertDetailDTO {
         this.payeeBankName = payeeBankName;
     }
 
-    public List<alertLog> getAuditLogs() {
+    public List<AlertLog> getAuditLogs() {
         return auditLogs;
     }
 
-    public void setAuditLogs(List<alertLog> auditLogs) {
+    public void setAuditLogs(List<AlertLog> auditLogs) {
         this.auditLogs = auditLogs;
     }
 }

@@ -1,11 +1,10 @@
 package org.ByteWatch.model;
 
 /**
- * Represents a bank customer / account holder, as stored in the
- * {@code customers} table. Used to enrich alert and transaction
- * details with human-readable payer/payee context.
+ * Stage 1 (Account Context): canonical customer/account metadata used
+ * to enrich risk investigations.
  */
-public class customer {
+public class Customer {
 
     private Long id;
     private String name;
@@ -14,10 +13,10 @@ public class customer {
     private String bankName;
     private String currency;
 
-    public customer() {
+    public Customer() {
     }
 
-    public customer(Long id, String name, String accNum, String accType, String bankName, String currency) {
+    public Customer(Long id, String name, String accNum, String accType, String bankName, String currency) {
         this.id = id;
         this.name = name;
         this.accNum = accNum;

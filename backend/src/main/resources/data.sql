@@ -1,4 +1,4 @@
--- Customers Table Seed Data [cite: 41]
+-- Stage 1 seed: customer/account profile data.
 INSERT INTO customers (name, acc_num, acc_type, bank_name, currency) VALUES
 ('Alice Smith', 'ACC-1001', 'SAVINGS', 'Global Bank', 'USD'),
 ('Bob Jones', 'ACC-1002', 'CHECKING', 'UK Trust', 'GBP'),
@@ -6,7 +6,7 @@ INSERT INTO customers (name, acc_num, acc_type, bank_name, currency) VALUES
 ('Hans Muller', 'ACC-1004', 'BUSINESS', 'Euro Vault', 'EUR'),
 ('Charlie Brown', 'ACC-1005', 'CHECKING', 'Global Bank', 'USD');
 
--- Transactions Table Seed Data [cite: 41, 58]
+-- Stage 2 seed: baseline + suspicious transactions for rule validation.
 INSERT INTO transactions (txn_id, timestamp, amount, currency, payee_acc_num, payer_acc_num, status, type) VALUES
 -- Normal baseline transactions (No alerts expected)
 ('TXN-001', '2023-10-25 10:00:00', 150.00, 'USD', 'ACC-1002', 'ACC-1001', 'COMPLETED', 'TRANSFER'),

@@ -1,18 +1,18 @@
 package org.ByteWatch.model;
 
 /**
- * Request body for {@code PUT /api/alerts/{id}/status}.
- * Example: {"status": "DISMISSED", "comment": "Verified legitimate purchase with customer over phone."}
+ * Stage 4 (Investigation Workflow): payload to update alert status and
+ * capture analyst context.
  */
-public class alertStatusUpdateRequest {
+public class AlertStatusUpdateRequest {
 
     private String status;
     private String comment;
 
-    public alertStatusUpdateRequest() {
+    public AlertStatusUpdateRequest() {
     }
 
-    public alertStatusUpdateRequest(String status, String comment) {
+    public AlertStatusUpdateRequest(String status, String comment) {
         this.status = status;
         this.comment = comment;
     }
