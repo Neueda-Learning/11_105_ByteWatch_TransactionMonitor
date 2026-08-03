@@ -2,6 +2,7 @@ package org.ByteWatch.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,6 +23,7 @@ import java.util.NoSuchElementException;
  * full detail and audit history, and driving the alert lifecycle.
  */
 @RestController
+@CrossOrigin(origins = "*")
 @RequestMapping("/api/alerts")
 public class AlertController {
 
