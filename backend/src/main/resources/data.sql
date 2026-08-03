@@ -1,5 +1,6 @@
 -- Stage 1 seed: customer/account profile data.
-INSERT INTO customers (name, acc_num, acc_type, bank_name, currency) VALUES
+-- Use INSERT IGNORE so local restarts don't fail on duplicate keys.
+INSERT IGNORE INTO customers (name, acc_num, acc_type, bank_name, currency) VALUES
 ('Alice Smith', 'ACC-1001', 'SAVINGS', 'Global Bank', 'USD'),
 ('Bob Jones', 'ACC-1002', 'CHECKING', 'UK Trust', 'GBP'),
 ('Priya Patel', 'ACC-1003', 'SAVINGS', 'Mumbai Finance', 'INR'),
@@ -7,7 +8,7 @@ INSERT INTO customers (name, acc_num, acc_type, bank_name, currency) VALUES
 ('Charlie Brown', 'ACC-1005', 'CHECKING', 'Global Bank', 'USD');
 
 -- Stage 2 seed: baseline + suspicious transactions for rule validation.
-INSERT INTO transactions (txn_id, timestamp, amount, currency, payee_acc_num, payer_acc_num, status, type) VALUES
+INSERT IGNORE INTO transactions (txn_id, timestamp, amount, currency, payee_acc_num, payer_acc_num, status, type) VALUES
 -- Normal baseline transactions (No alerts expected)
 ('TXN-001', '2023-10-25 10:00:00', 150.00, 'USD', 'ACC-1002', 'ACC-1001', 'COMPLETED', 'TRANSFER'),
 ('TXN-002', '2023-10-25 10:15:00', 4500.00, 'GBP', 'ACC-1004', 'ACC-1002', 'COMPLETED', 'PAYMENT'),

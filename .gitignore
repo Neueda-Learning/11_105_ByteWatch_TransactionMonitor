@@ -1,4 +1,4 @@
-target/
+backend/target/
 !backend/.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
@@ -6,6 +6,7 @@ target/
 
 ### IntelliJ IDEA ###
 backend/.idea/modules.xml
+.idea
 .idea/jarRepositories.xml
 backend/.idea/compiler.xml
 backend/.idea/libraries/

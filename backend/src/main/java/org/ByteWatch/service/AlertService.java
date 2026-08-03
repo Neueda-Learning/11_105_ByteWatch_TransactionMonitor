@@ -63,6 +63,11 @@ public class AlertService {
      * and automatically opens an alert if any rule was triggered.
      */
     public TransactionIntakeResult processTransaction(Transaction txn) {
+        // Stage 2 intake guardrails: fail fast on incomplete payloads before persistence.
+        if (txn == null || txn.getTxnId() == null || txn.getTxnId().isBlank() || txn.getTimestamp() == null) {
+            throw new IllegalArgumentException("txnId and timestamp are required");
+        }
+
         if (txn.getStatus() == null || txn.getStatus().isBlank()) {
             txn.setStatus(DEFAULT_TRANSACTION_STATUS);
         }
@@ -120,6 +125,9 @@ public class AlertService {
      *                                  required comment is missing/blank
      */
     public AlertDetailDTO updateAlertStatus(Long alertId, AlertStatusUpdateRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("request body is required");
+        }
         if (request.getStatus() == null || request.getStatus().isBlank()) {
             throw new IllegalArgumentException("status is required");
         }
@@ -149,6 +157,7 @@ public class AlertService {
     }
 
     private void validateTransition(String currentStatus, String newStatus) {
+        // Only strict forward transitions are allowed; terminal states cannot move again.
         Set<String> allowedNextStatuses = ALLOWED_TRANSITIONS.get(currentStatus);
         if (allowedNextStatuses == null || !allowedNextStatuses.contains(newStatus)) {
             throw new IllegalArgumentException(

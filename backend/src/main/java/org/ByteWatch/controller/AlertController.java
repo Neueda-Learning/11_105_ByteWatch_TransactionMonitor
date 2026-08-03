@@ -55,16 +55,19 @@ public class AlertController {
     @PutMapping("/{id}/status")
     public ResponseEntity<AlertDetailDTO> updateStatus(@PathVariable Long id,
                                                          @RequestBody AlertStatusUpdateRequest request) {
+        // Stage 4 action: lifecycle transition with audit logging.
         return ResponseEntity.ok(alertService.updateAlertStatus(id, request));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException ex) {
+        // Invalid transitions / payloads map to 400.
         return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
     }
 
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<Map<String, String>> handleNotFound(NoSuchElementException ex) {
+        // Missing alert IDs map to 404.
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
     }
 }

@@ -32,12 +32,14 @@ public class TransactionController {
      */
     @PostMapping
     public ResponseEntity<AlertService.TransactionIntakeResult> submitTransaction(@RequestBody Transaction transaction) {
+        // Single entry point for Stage 2 ingestion + Stage 3 rule evaluation.
         AlertService.TransactionIntakeResult result = alertService.processTransaction(transaction);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException ex) {
+        // Keep validation errors consistent for API clients.
         return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
     }
 }

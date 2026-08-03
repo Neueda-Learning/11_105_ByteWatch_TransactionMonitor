@@ -53,6 +53,11 @@ public class RuleEngineService {
      * severity score and level.
      */
     public RuleEvaluationResult evaluate(Transaction txn) {
+        // Defensive guard: service callers should send a complete transaction payload.
+        if (txn == null || txn.getTimestamp() == null || txn.getPayerAccNum() == null || txn.getPayeeAccNum() == null) {
+            throw new IllegalArgumentException("transaction, timestamp, payerAccNum, and payeeAccNum are required");
+        }
+
         List<Integer> triggeredRuleIds = new ArrayList<>();
         int score = 0;
 
