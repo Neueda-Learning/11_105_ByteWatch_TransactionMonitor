@@ -42,6 +42,53 @@ CREATE TABLE IF NOT EXISTS alert_log (
 );
 
 -- Indexes to keep list/detail alert queries responsive as data grows.
-CREATE INDEX IF NOT EXISTS idx_alert_status_ts ON alerts(status, alert_timestamp);
-CREATE INDEX IF NOT EXISTS idx_alert_log_alert_ts ON alert_log(alert_id, log_timestamp);
-CREATE INDEX IF NOT EXISTS idx_txn_payer_ts ON transactions(payer_acc_num, timestamp);
+SET @idx_alert_status_ts := (
+    SELECT IF(
+        EXISTS(
+            SELECT 1
+            FROM information_schema.statistics
+            WHERE table_schema = DATABASE()
+              AND table_name = 'alerts'
+              AND index_name = 'idx_alert_status_ts'
+        ),
+        'SELECT 1',
+        'CREATE INDEX idx_alert_status_ts ON alerts(status, alert_timestamp)'
+    )
+);
+PREPARE stmt FROM @idx_alert_status_ts;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @idx_alert_log_alert_ts := (
+    SELECT IF(
+        EXISTS(
+            SELECT 1
+            FROM information_schema.statistics
+            WHERE table_schema = DATABASE()
+              AND table_name = 'alert_log'
+              AND index_name = 'idx_alert_log_alert_ts'
+        ),
+        'SELECT 1',
+        'CREATE INDEX idx_alert_log_alert_ts ON alert_log(alert_id, log_timestamp)'
+    )
+);
+PREPARE stmt FROM @idx_alert_log_alert_ts;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @idx_txn_payer_ts := (
+    SELECT IF(
+        EXISTS(
+            SELECT 1
+            FROM information_schema.statistics
+            WHERE table_schema = DATABASE()
+              AND table_name = 'transactions'
+              AND index_name = 'idx_txn_payer_ts'
+        ),
+        'SELECT 1',
+        'CREATE INDEX idx_txn_payer_ts ON transactions(payer_acc_num, timestamp)'
+    )
+);
+PREPARE stmt FROM @idx_txn_payer_ts;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
