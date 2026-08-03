@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ByteWatch Alert Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="bg-orb bg-orb-a" aria-hidden="true"></div>
+    <div class="bg-orb bg-orb-b" aria-hidden="true"></div>
+
+    <main class="app-shell">
+        <header class="topbar">
+            <div>
+                <p class="kicker">ByteWatch Risk Desk</p>
+                <h1>Alert Management System</h1>
+            </div>
+            <div class="topbar-actions">
+                <button id="refreshBtn" class="btn btn-secondary" type="button">Refresh Alerts</button>
+                <p class="small-meta">Live data from <span>/api/alerts</span></p>
+            </div>
+        </header>
+
+        <section class="dashboard-metrics" id="metricsRow" aria-label="Alert metrics"></section>
+
+        <section class="workspace-grid" aria-label="Alert workspace">
+            <aside class="panel alerts-panel">
+                <div class="panel-header">
+                    <h2>Active Alerts</h2>
+                    <span id="alertCount" class="chip">0</span>
+                </div>
+
+                <label class="search-wrap" for="searchInput">
+                    <span>Search</span>
+                    <input id="searchInput" type="search" placeholder="Alert ID, txn ID, payer, payee" autocomplete="off">
+                </label>
+
+                <div class="status-filters" id="statusFilters" role="tablist" aria-label="Filter by status">
+                    <button class="filter-pill active" data-filter="ALL" type="button">All</button>
+                    <button class="filter-pill" data-filter="OPEN" type="button">Open</button>
+                    <button class="filter-pill" data-filter="ACKNOWLEDGED" type="button">Acknowledged</button>
+                    <button class="filter-pill" data-filter="INVESTIGATING" type="button">Investigating</button>
+                </div>
+
+                <div id="alertsList" class="alerts-list" aria-live="polite"></div>
+            </aside>
+
+            <section class="panel details-panel" id="detailsPanel" aria-live="polite">
+                <div class="empty-state" id="emptyState">
+                    <h2>Select an alert</h2>
+                    <p>Pick an alert from the list to review triggered rules, transaction context, and lifecycle actions.</p>
+                </div>
+
+                <article id="alertDetails" class="details hidden">
+                    <header class="details-head">
+                        <div>
+                            <p class="mono" id="detailAlertId">Alert</p>
+                            <h2 id="detailTitle">Alert Details</h2>
+                        </div>
+                        <div class="detail-badges">
+                            <span id="detailStatus" class="status-badge">OPEN</span>
+                            <span id="detailSeverity" class="severity-badge">MEDIUM</span>
+                        </div>
+                    </header>
+
+                    <div class="detail-grid">
+                        <section class="card" aria-label="Alert summary">
+                            <h3>Alert Summary</h3>
+                            <dl class="kv-grid" id="summaryGrid"></dl>
+                        </section>
+
+                        <section class="card" aria-label="Triggered rules">
+                            <h3>Triggered Rules</h3>
+                            <div id="rulesList" class="rules-list"></div>
+                        </section>
+
+                        <section class="card" aria-label="Transaction details">
+                            <h3>Transaction</h3>
+                            <dl class="kv-grid" id="transactionGrid"></dl>
+                        </section>
+
+                        <section class="card" aria-label="Parties">
+                            <h3>Payer &amp; Payee</h3>
+                            <div id="partiesGrid" class="parties-grid"></div>
+                        </section>
+                    </div>
+
+                    <section class="card lifecycle-card" aria-label="Alert lifecycle">
+                        <h3>Alert Lifecycle</h3>
+                        <ol class="lifecycle-track" id="lifecycleTrack"></ol>
+
+                        <h4>Audit Trail</h4>
+                        <div id="auditLogs" class="audit-logs"></div>
+
+                        <div class="action-panel">
+                            <label for="actionComment">Analyst Comment</label>
+                            <textarea id="actionComment" rows="3" placeholder="Required for dismiss and close actions"></textarea>
+                            <div id="actionButtons" class="action-buttons"></div>
+                        </div>
+                    </section>
+                </article>
+            </section>
+        </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="assertive"></div>
+    <script src="script.js"></script>
+</body>
+</html>
