@@ -35,6 +35,11 @@ build/
 
 ### VS Code ###
 .vscode/
+**/.vscode/
+
+### Generic IDE folders ###
+.idea/
+**/.idea/
 
 ### Mac OS ###
 .DS_Store
