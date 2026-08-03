@@ -1,0 +1,43 @@
+package org.ByteWatch.controller;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.ByteWatch.model.Transaction;
+import org.ByteWatch.service.AlertService;
+
+import java.util.Map;
+
+/**
+ * REST endpoints for submitting incoming transactions to be persisted
+ * and evaluated by the rule engine.
+ */
+@RestController
+@RequestMapping("/api/transactions")
+public class TransactionController {
+
+    private final AlertService alertService;
+
+    public TransactionController(AlertService alertService) {
+        this.alertService = alertService;
+    }
+
+    /**
+     * Accepts a transaction, persists it, runs the rule engine, and
+     * automatically opens an alert if any rule was triggered.
+     */
+    @PostMapping
+    public ResponseEntity<AlertService.TransactionIntakeResult> submitTransaction(@RequestBody Transaction transaction) {
+        AlertService.TransactionIntakeResult result = alertService.processTransaction(transaction);
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+    }
+}
