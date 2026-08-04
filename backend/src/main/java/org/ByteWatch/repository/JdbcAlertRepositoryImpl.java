@@ -120,7 +120,7 @@ public class JdbcAlertRepositoryImpl implements AlertRepository {
     @Override
     public List<AlertDetailDTO> findActiveAlertDetails() {
         String sql = DETAIL_JOIN_SQL +
-                "WHERE a.status IN ('OPEN', 'ACKNOWLEDGED', 'INVESTIGATING') " +
+                "WHERE a.status IN ('OPEN', 'ACKNOWLEDGED', 'INVESTIGATING', 'CLOSED','DISMISSED') " +
                 "ORDER BY a.alert_timestamp DESC";
         return jdbcTemplate.query(sql, ALERT_DETAIL_ROW_MAPPER);
     }

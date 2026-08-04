@@ -27,69 +27,10 @@ INSERT INTO customers (name, acc_num, acc_type, bank_name, currency) VALUES
 ('Oliver Scott', 'ACC-1014', 'CURRENT', 'Sterling Bank', 'GBP'),
 ('Nina Verma', 'ACC-1015', 'SAVINGS', 'Unity Bank', 'INR');
 
--- Stage 2 seed: baseline transaction history generated for a realistic dashboard volume.
-INSERT INTO transactions (txn_id, timestamp, amount, currency, payee_acc_num, payer_acc_num, status, type)
-WITH RECURSIVE seq AS (
-	SELECT 1 AS n
-	UNION ALL
-	SELECT n + 1 FROM seq WHERE n < 996
-)
-SELECT
-	CONCAT('TXN-', LPAD(n, 4, '0')) AS txn_id,
-	DATE_ADD('2026-06-01 08:00:00', INTERVAL n * 11 MINUTE) AS timestamp,
-	CAST(ROUND(85 + MOD(n * 37, 4200) + ((MOD(n, 5)) * 0.47), 2) AS DECIMAL(15, 2)) AS amount,
-	CASE MOD(n, 4)
-		WHEN 0 THEN 'USD'
-		WHEN 1 THEN 'GBP'
-		WHEN 2 THEN 'EUR'
-		ELSE 'INR'
-	END AS currency,
-	CASE MOD(n + 5, 15)
-		WHEN 0 THEN 'ACC-1001'
-		WHEN 1 THEN 'ACC-1002'
-		WHEN 2 THEN 'ACC-1003'
-		WHEN 3 THEN 'ACC-1004'
-		WHEN 4 THEN 'ACC-1005'
-		WHEN 5 THEN 'ACC-1006'
-		WHEN 6 THEN 'ACC-1007'
-		WHEN 7 THEN 'ACC-1008'
-		WHEN 8 THEN 'ACC-1009'
-		WHEN 9 THEN 'ACC-1010'
-		WHEN 10 THEN 'ACC-1011'
-		WHEN 11 THEN 'ACC-1012'
-		WHEN 12 THEN 'ACC-1013'
-		WHEN 13 THEN 'ACC-1014'
-		ELSE 'ACC-1015'
-	END AS payee_acc_num,
-	CASE MOD(n, 15)
-		WHEN 0 THEN 'ACC-1001'
-		WHEN 1 THEN 'ACC-1002'
-		WHEN 2 THEN 'ACC-1003'
-		WHEN 3 THEN 'ACC-1004'
-		WHEN 4 THEN 'ACC-1005'
-		WHEN 5 THEN 'ACC-1006'
-		WHEN 6 THEN 'ACC-1007'
-		WHEN 7 THEN 'ACC-1008'
-		WHEN 8 THEN 'ACC-1009'
-		WHEN 9 THEN 'ACC-1010'
-		WHEN 10 THEN 'ACC-1011'
-		WHEN 11 THEN 'ACC-1012'
-		WHEN 12 THEN 'ACC-1013'
-		WHEN 13 THEN 'ACC-1014'
-		ELSE 'ACC-1015'
-	END AS payer_acc_num,
-	CASE
-		WHEN MOD(n, 23) = 0 THEN 'PENDING'
-		WHEN MOD(n, 41) = 0 THEN 'FAILED'
-		ELSE 'COMPLETED'
-	END AS status,
-	CASE MOD(n, 4)
-		WHEN 0 THEN 'TRANSFER'
-		WHEN 1 THEN 'PAYMENT'
-		WHEN 2 THEN 'WIRE'
-		ELSE 'TRANSFER'
-	END AS type
-FROM seq;
+-- Stage 2 seed note: the previous CTE-based bulk generator was removed
+-- because older MySQL versions reject CTE + INSERT syntax in init scripts.
+-- The seeded scenarios below still provide enough transaction variety for
+-- dashboard rendering and rule/lifecycle demonstrations.
 
 -- Stage 2 seed extension: hand-crafted suspicious transactions that line up with the demo alerts.
 INSERT INTO transactions (txn_id, timestamp, amount, currency, payee_acc_num, payer_acc_num, status, type) VALUES

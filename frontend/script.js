@@ -11,11 +11,14 @@ const RULE_DEFINITIONS = {
 const STATUS_FLOW = ["OPEN", "ACKNOWLEDGED", "INVESTIGATING", "DISMISSED", "CLOSED"];
 
 const NEXT_ACTIONS = {
-	OPEN: [{ label: "Acknowledge", status: "ACKNOWLEDGED", tone: "primary" }],
-	ACKNOWLEDGED: [{ label: "Start Investigation", status: "INVESTIGATING", tone: "primary" }],
+	OPEN: [],
+	ACKNOWLEDGED: [
+		{ label: "Investigate", status: "INVESTIGATING", tone: "primary" },
+		{ label: "Dismiss", status: "DISMISSED", tone: "danger" }
+	],
 	INVESTIGATING: [
-		{ label: "Dismiss", status: "DISMISSED", tone: "danger" },
-		{ label: "Close", status: "CLOSED", tone: "secondary" }
+		{ label: "Close", status: "CLOSED", tone: "secondary" },
+		{ label: "Dismiss", status: "DISMISSED", tone: "danger" }
 	],
 	DISMISSED: [],
 	CLOSED: []
@@ -121,6 +124,7 @@ const state = {
 	search: "",
 	usingDemoData: false,
 	loading: false,
+	autoAcknowledgeInProgress: false,
 	simulationRunning: false,
 	simulationStatusTimer: null,
 	autoRefreshTimer: null
@@ -402,8 +406,9 @@ function renderAlertsList() {
 		.sort((a, b) => new Date(b.alertTimestamp) - new Date(a.alertTimestamp))
 		.map((alert) => {
 			const activeClass = alert.alertId === state.selectedAlertId ? "active" : "";
+			const unreadClass = alert.status === "OPEN" ? "unread-open" : "";
 			return `
-				<button class="alert-item ${activeClass}" data-id="${alert.alertId}" type="button">
+				<button class="alert-item ${activeClass} ${unreadClass}" data-id="${alert.alertId}" type="button">
 					<h3>Alert #${alert.alertId} · ${escapeHtml(alert.payerName || "Unknown payer")}</h3>
 					<p>Txn ${escapeHtml(alert.txnId || "-")} · ${formatAmount(alert.amount, alert.currency)}</p>
 					<div class="alert-meta">
@@ -427,6 +432,10 @@ function renderAlertsList() {
 }
 
 async function renderSelectedAlert() {
+	if (state.autoAcknowledgeInProgress) {
+		return;
+	}
+
 	if (!state.selectedAlertId) {
 		elements.emptyState.classList.remove("hidden");
 		elements.alertDetails.classList.add("hidden");
@@ -443,6 +452,24 @@ async function renderSelectedAlert() {
 
 	if (!state.usingDemoData) {
 		selected = await fetchAlertDetail(selected.alertId, selected);
+		syncSelectedAlertToList(selected);
+	}
+
+	if (selected.status === "OPEN") {
+		const autoAcked = await autoAcknowledgeSelectedAlert(selected.alertId);
+		if (autoAcked) {
+			renderAlertsList();
+			selected = state.alerts.find((alert) => alert.alertId === state.selectedAlertId);
+			if (!selected) {
+				elements.emptyState.classList.remove("hidden");
+				elements.alertDetails.classList.add("hidden");
+				return;
+			}
+			if (!state.usingDemoData) {
+				selected = await fetchAlertDetail(selected.alertId, selected);
+				syncSelectedAlertToList(selected);
+			}
+		}
 	}
 
 	elements.emptyState.classList.add("hidden");
@@ -477,6 +504,23 @@ async function renderSelectedAlert() {
 	renderLifecycle(selected.status);
 	renderAuditLogs(selected.auditLogs || []);
 	renderActionButtons(selected.status, selected.alertId);
+}
+
+async function autoAcknowledgeSelectedAlert(alertId) {
+	state.autoAcknowledgeInProgress = true;
+	try {
+		const success = await updateAlertStatus(alertId, "ACKNOWLEDGED", {
+			silentSuccess: true,
+			skipRender: true,
+			overrideComment: "Automatically acknowledged when alert was opened by analyst."
+		});
+		if (success) {
+			showToast(`Alert #${alertId} auto-acknowledged.`);
+		}
+		return success;
+	} finally {
+		state.autoAcknowledgeInProgress = false;
+	}
 }
 
 async function fetchAlertDetail(alertId, fallbackValue) {
@@ -561,7 +605,7 @@ function renderActionButtons(currentStatus, alertId) {
 		button.className = getActionClass(action.tone);
 		button.textContent = action.label;
 		button.addEventListener("click", () => {
-			updateAlertStatus(alertId, action.status);
+			updateAlertStatus(alertId, action.status, { silentSuccess: false, skipRender: false });
 		});
 		elements.actionButtons.appendChild(button);
 	});
@@ -577,32 +621,42 @@ function getActionClass(tone) {
 	return "btn btn-primary";
 }
 
-async function updateAlertStatus(alertId, targetStatus) {
-	const comment = elements.actionComment.value.trim();
+async function updateAlertStatus(alertId, targetStatus, options = {}) {
+	const commentFromInput = elements.actionComment.value.trim();
+	const comment = options.overrideComment ?? commentFromInput;
 	const commentRequired = targetStatus === "DISMISSED" || targetStatus === "CLOSED";
+	const silentSuccess = options.silentSuccess === true;
+	const skipRender = options.skipRender === true;
 
 	if (commentRequired && !comment) {
 		showToast(`Comment is required for ${targetStatus}.`);
-		return;
+		return false;
 	}
 
 	if (state.usingDemoData) {
 		const alert = state.alerts.find((item) => item.alertId === alertId);
 		if (!alert) {
-			return;
+			return false;
 		}
-		alert.status = targetStatus;
-		alert.auditLogs = alert.auditLogs || [];
-		alert.auditLogs.push({
+
+		const nowIso = new Date().toISOString();
+		applyLocalStatusUpdate(alertId, {
 			status: targetStatus,
-			comment: comment || "Updated in demo mode.",
-			logTimestamp: new Date().toISOString()
+			auditEntry: {
+				status: targetStatus,
+				comment: comment || "No comment provided.",
+				logTimestamp: nowIso
+			}
 		});
 
 		elements.actionComment.value = "";
-		showToast(`Alert #${alertId} moved to ${targetStatus} (demo mode).`);
-		renderAll();
-		return;
+		if (!silentSuccess) {
+			showToast(`Alert #${alertId} moved to ${targetStatus} (demo mode).`);
+		}
+		if (!skipRender) {
+			renderAll();
+		}
+		return true;
 	}
 
 	try {
@@ -619,20 +673,66 @@ async function updateAlertStatus(alertId, targetStatus) {
 		}
 
 		const updatedAlert = await response.json();
-		state.alerts = state.alerts
-			.map((alert) => (alert.alertId === updatedAlert.alertId ? updatedAlert : alert))
-			.filter((alert) => ["OPEN", "ACKNOWLEDGED", "INVESTIGATING"].includes(alert.status));
+		const mergedAlert = {
+			...(state.alerts.find((alert) => alert.alertId === alertId) || {}),
+			...updatedAlert
+		};
 
-		if (!state.alerts.some((alert) => alert.alertId === alertId)) {
-			state.selectedAlertId = state.alerts[0]?.alertId || null;
-		}
+		applyLocalStatusUpdate(alertId, {
+			status: mergedAlert.status || targetStatus,
+			mergedAlert,
+			auditLogs: Array.isArray(updatedAlert.auditLogs) ? updatedAlert.auditLogs : undefined
+		});
 
 		elements.actionComment.value = "";
-		showToast(`Alert #${alertId} moved to ${targetStatus}.`);
-		renderAll();
+		if (!silentSuccess) {
+			showToast(`Alert #${alertId} moved to ${targetStatus}.`);
+		}
+		if (!skipRender) {
+			renderAll();
+		}
+		return true;
 	} catch (error) {
 		showToast(error.message);
+		return false;
 	}
+}
+
+function applyLocalStatusUpdate(alertId, payload) {
+	const index = state.alerts.findIndex((alert) => alert.alertId === alertId);
+	if (index === -1) {
+		if (payload.mergedAlert) {
+			state.alerts.unshift(payload.mergedAlert);
+		}
+		return;
+	}
+
+	const current = state.alerts[index];
+	const next = {
+		...current,
+		...(payload.mergedAlert || {}),
+		status: payload.status || current.status
+	};
+
+	if (Array.isArray(payload.auditLogs)) {
+		next.auditLogs = payload.auditLogs;
+	} else if (payload.auditEntry) {
+		next.auditLogs = [...(current.auditLogs || []), payload.auditEntry];
+	}
+
+	state.alerts[index] = next;
+}
+
+function syncSelectedAlertToList(alertDetail) {
+	if (!alertDetail || typeof alertDetail.alertId !== "number") {
+		return;
+	}
+
+	applyLocalStatusUpdate(alertDetail.alertId, {
+		status: alertDetail.status,
+		mergedAlert: alertDetail,
+		auditLogs: Array.isArray(alertDetail.auditLogs) ? alertDetail.auditLogs : undefined
+	});
 }
 
 function renderKeyValueGrid(container, rows) {
