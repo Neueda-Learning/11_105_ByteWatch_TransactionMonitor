@@ -33,10 +33,10 @@ public class AlertService {
     private static final String STATUS_DISMISSED = "DISMISSED";
     private static final String STATUS_CLOSED = "CLOSED";
 
-    /** Allowed forward transitions: OPEN -> ACKNOWLEDGED -> INVESTIGATING -> (DISMISSED | CLOSED). */
+        /** Allowed forward transitions: OPEN -> ACKNOWLEDGED -> (INVESTIGATING | DISMISSED), INVESTIGATING -> (DISMISSED | CLOSED). */
     private static final Map<String, Set<String>> ALLOWED_TRANSITIONS = Map.of(
             STATUS_OPEN, Set.of(STATUS_ACKNOWLEDGED),
-            STATUS_ACKNOWLEDGED, Set.of(STATUS_INVESTIGATING),
+            STATUS_ACKNOWLEDGED, Set.of(STATUS_INVESTIGATING, STATUS_DISMISSED),
             STATUS_INVESTIGATING, Set.of(STATUS_DISMISSED, STATUS_CLOSED)
     );
 
