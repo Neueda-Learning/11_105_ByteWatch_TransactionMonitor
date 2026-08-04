@@ -271,21 +271,7 @@ Recommended workflow:
 3. Merge develop into main only when build is green.
 4. Keep main stable for demos and release snapshots.
 
-### Local push guard
-
-This repository includes a local pre-push hook at .githooks/pre-push that blocks direct pushes to main by default.
-
-Enable it in your local clone:
-
-```bash
-git config core.hooksPath .githooks
-```
-
-Emergency override (one-off):
-
-```bash
-BYPASS_MAIN_PUSH=1 git push origin main
-```
+For this repository, local push guard hooks may block direct pushes to main unless explicitly overridden.
 
 ## Notes
 
