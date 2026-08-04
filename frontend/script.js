@@ -1,4 +1,5 @@
 const API_BASE = "http://localhost:8080/api/alerts";
+const SIMULATION_API_BASE = "http://localhost:8080/api/simulation";
 
 const RULE_DEFINITIONS = {
 	1: "High Amount: amount > 10,000",
@@ -119,11 +120,20 @@ const state = {
 	filter: "ALL",
 	search: "",
 	usingDemoData: false,
-	loading: false
+	loading: false,
+	simulationRunning: false,
+	simulationStatusTimer: null,
+	autoRefreshTimer: null
 };
 
 const elements = {
 	refreshBtn: document.getElementById("refreshBtn"),
+	simStartBtn: document.getElementById("simStartBtn"),
+	simStopBtn: document.getElementById("simStopBtn"),
+	simMinDelay: document.getElementById("simMinDelay"),
+	simMaxDelay: document.getElementById("simMaxDelay"),
+	simSuspicious: document.getElementById("simSuspicious"),
+	simStatusText: document.getElementById("simStatusText"),
 	alertsList: document.getElementById("alertsList"),
 	alertCount: document.getElementById("alertCount"),
 	metricsRow: document.getElementById("metricsRow"),
@@ -151,10 +161,14 @@ init();
 async function init() {
 	wireEvents();
 	await loadAlerts();
+	await loadSimulationStatus(true);
+	startSimulationStatusPolling();
 }
 
 function wireEvents() {
 	elements.refreshBtn.addEventListener("click", () => loadAlerts(true));
+	elements.simStartBtn.addEventListener("click", () => startSimulationFeed());
+	elements.simStopBtn.addEventListener("click", () => stopSimulationFeed());
 
 	elements.searchInput.addEventListener("input", (event) => {
 		state.search = event.target.value.trim().toLowerCase();
@@ -173,6 +187,130 @@ function wireEvents() {
 
 		renderAlertsList();
 	});
+}
+
+function startSimulationStatusPolling() {
+	if (state.simulationStatusTimer) {
+		clearInterval(state.simulationStatusTimer);
+	}
+	state.simulationStatusTimer = setInterval(() => {
+		loadSimulationStatus(true);
+	}, 3000);
+}
+
+async function loadSimulationStatus(silent) {
+	try {
+		const response = await fetch(`${SIMULATION_API_BASE}/status`);
+		if (!response.ok) {
+			throw new Error(`Simulator status unavailable (${response.status})`);
+		}
+		const status = await response.json();
+		renderSimulationStatus(status);
+	} catch (error) {
+		state.simulationRunning = false;
+		updateAutoRefreshLoop();
+		elements.simStatusText.textContent = "UNAVAILABLE";
+		elements.simStatusText.style.color = "#8f2b16";
+		elements.simStartBtn.disabled = true;
+		elements.simStopBtn.disabled = true;
+		if (!silent) {
+			showToast("Simulation service unavailable. Is backend running?");
+		}
+	}
+}
+
+function renderSimulationStatus(status) {
+	state.simulationRunning = Boolean(status?.running);
+
+	elements.simStatusText.textContent = state.simulationRunning
+		? `ON · tx=${status.generatedTransactions ?? 0} alerts=${status.generatedAlerts ?? 0}`
+		: "OFF";
+	elements.simStatusText.style.color = state.simulationRunning ? "#2f8f4f" : "#5f687a";
+
+	elements.simStartBtn.disabled = state.simulationRunning;
+	elements.simStopBtn.disabled = !state.simulationRunning;
+
+	if (!state.simulationRunning) {
+		if (typeof status?.minDelayMs === "number") {
+			elements.simMinDelay.value = status.minDelayMs;
+		}
+		if (typeof status?.maxDelayMs === "number") {
+			elements.simMaxDelay.value = status.maxDelayMs;
+		}
+		if (typeof status?.suspiciousChance === "number") {
+			elements.simSuspicious.value = Math.round(status.suspiciousChance * 100);
+		}
+	}
+
+	updateAutoRefreshLoop();
+}
+
+function updateAutoRefreshLoop() {
+	if (state.simulationRunning) {
+		if (!state.autoRefreshTimer) {
+			state.autoRefreshTimer = setInterval(() => {
+				if (!state.loading) {
+					loadAlerts(false);
+				}
+			}, 3500);
+		}
+		return;
+	}
+
+	if (state.autoRefreshTimer) {
+		clearInterval(state.autoRefreshTimer);
+		state.autoRefreshTimer = null;
+	}
+}
+
+async function startSimulationFeed() {
+	const minDelayMs = Number(elements.simMinDelay.value);
+	const maxDelayMs = Number(elements.simMaxDelay.value);
+	const suspiciousPercent = Number(elements.simSuspicious.value);
+
+	if (!Number.isFinite(minDelayMs) || !Number.isFinite(maxDelayMs) || !Number.isFinite(suspiciousPercent)) {
+		showToast("Simulation inputs must be valid numbers.");
+		return;
+	}
+
+	try {
+		const response = await fetch(`${SIMULATION_API_BASE}/start`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				minDelayMs,
+				maxDelayMs,
+				suspiciousChance: suspiciousPercent / 100
+			})
+		});
+
+		if (!response.ok) {
+			const errorPayload = await safeParseJson(response);
+			throw new Error(errorPayload?.error || `Failed to start simulator (${response.status}).`);
+		}
+
+		const status = await response.json();
+		renderSimulationStatus(status);
+		showToast("Live transaction feed started.");
+		await loadAlerts(false);
+	} catch (error) {
+		showToast(error.message);
+	}
+}
+
+async function stopSimulationFeed() {
+	try {
+		const response = await fetch(`${SIMULATION_API_BASE}/stop`, { method: "POST" });
+		if (!response.ok) {
+			const errorPayload = await safeParseJson(response);
+			throw new Error(errorPayload?.error || `Failed to stop simulator (${response.status}).`);
+		}
+		const status = await response.json();
+		renderSimulationStatus(status);
+		showToast("Live transaction feed stopped.");
+	} catch (error) {
+		showToast(error.message);
+	}
 }
 
 async function loadAlerts(showToastOnSuccess = false) {

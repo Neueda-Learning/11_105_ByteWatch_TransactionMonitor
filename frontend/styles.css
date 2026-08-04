@@ -82,6 +82,28 @@ h1 {
 	gap: 0.4rem;
 }
 
+.sim-controls {
+	display: flex;
+	gap: 0.45rem;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+}
+
+.sim-settings {
+	display: grid;
+	grid-template-columns: auto 72px auto 72px auto 72px;
+	gap: 0.4rem 0.5rem;
+	align-items: center;
+	font-size: 0.78rem;
+	color: var(--muted);
+}
+
+.sim-settings input {
+	padding: 0.36rem 0.45rem;
+	font-size: 0.8rem;
+	border-radius: 8px;
+}
+
 .small-meta {
 	margin: 0;
 	font-size: 0.8rem;
@@ -90,6 +112,10 @@ h1 {
 
 .small-meta span {
 	font-family: "IBM Plex Mono", monospace;
+}
+
+#simStatusText {
+	font-weight: 600;
 }
 
 .btn {
@@ -614,6 +640,22 @@ textarea:focus {
 
 	.topbar-actions {
 		align-items: flex-start;
+	}
+
+	.sim-controls {
+		justify-content: flex-start;
+	}
+
+	.sim-settings {
+		grid-template-columns: auto 86px auto 86px;
+	}
+
+	.sim-settings label[for="simSuspicious"] {
+		grid-column: 1;
+	}
+
+	.sim-settings input#simSuspicious {
+		grid-column: 2;
 	}
 
 	.detail-grid,

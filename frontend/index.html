@@ -20,8 +20,20 @@
                 <h1>Alert Management System</h1>
             </div>
             <div class="topbar-actions">
-                <button id="refreshBtn" class="btn btn-secondary" type="button">Refresh Alerts</button>
-                <p class="small-meta">Live data from <span>/api/alerts</span></p>
+                <div class="sim-controls" aria-label="Live transaction simulation">
+                    <button id="refreshBtn" class="btn btn-secondary" type="button">Refresh Alerts</button>
+                    <button id="simStartBtn" class="btn btn-primary" type="button">Start Live Feed</button>
+                    <button id="simStopBtn" class="btn btn-secondary" type="button">Stop Feed</button>
+                </div>
+                <div class="sim-settings" aria-label="Simulation settings">
+                    <label for="simMinDelay">Min ms</label>
+                    <input id="simMinDelay" type="number" min="200" value="800">
+                    <label for="simMaxDelay">Max ms</label>
+                    <input id="simMaxDelay" type="number" min="200" value="2800">
+                    <label for="simSuspicious">Suspicious %</label>
+                    <input id="simSuspicious" type="number" min="0" max="100" value="35">
+                </div>
+                <p class="small-meta">Live data from <span>/api/alerts</span> · Simulator <span id="simStatusText">OFF</span></p>
             </div>
         </header>
 
