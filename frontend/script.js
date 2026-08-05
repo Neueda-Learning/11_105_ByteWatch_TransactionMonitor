@@ -2,10 +2,16 @@ const API_BASE = "http://localhost:8080/api/alerts";
 const SIMULATION_API_BASE = "http://localhost:8080/api/simulation";
 
 const RULE_DEFINITIONS = {
-	1: "High Amount: amount > 10,000",
 	2: "High Velocity: more than 3 transactions in 5 minutes",
 	3: "New Payee: first-time payer to payee relationship",
-	4: "Daily Limit: payer volume exceeds 50,000 in 24h"
+	4: "Daily Limit: payer volume exceeds threshold in 24h"
+};
+
+const CURRENCY_THRESHOLDS = {
+	USD: { highAmount: 10000, dailyLimit: 50000, highAmountLabel: "$10,000", dailyLimitLabel: "$50,000" },
+	INR: { highAmount: 500000, dailyLimit: 2500000, highAmountLabel: "Rs. 500,000", dailyLimitLabel: "Rs. 2,500,000" },
+	GBP: { highAmount: 7500, dailyLimit: 37500, highAmountLabel: "GBP 7,500", dailyLimitLabel: "GBP 37,500" },
+	EUR: { highAmount: 9000, dailyLimit: 45000, highAmountLabel: "EUR 9,000", dailyLimitLabel: "EUR 45,000" }
 };
 
 const STATUS_FLOW = ["OPEN", "ACKNOWLEDGED", "INVESTIGATING", "DISMISSED", "CLOSED"];
@@ -491,7 +497,7 @@ async function renderSelectedAlert() {
 		["Data Mode", state.usingDemoData ? "Demo" : "Live"]
 	]);
 
-	renderRules(selected.ruleIds || []);
+	renderRules(selected.ruleIds || [], selected.currency);
 
 	renderKeyValueGrid(elements.transactionGrid, [
 		["Transaction ID", selected.txnId || "-"],
@@ -536,15 +542,37 @@ async function fetchAlertDetail(alertId, fallbackValue) {
 	}
 }
 
-function renderRules(ruleIds) {
+function renderRules(ruleIds, currency) {
 	if (!ruleIds.length) {
 		elements.rulesList.innerHTML = '<span class="rule-chip">No triggered rules</span>';
 		return;
 	}
 
 	elements.rulesList.innerHTML = ruleIds
-		.map((ruleId) => `<span class="rule-chip">Rule ${ruleId}: ${escapeHtml(RULE_DEFINITIONS[ruleId] || "Unknown rule")}</span>`)
+		.map((ruleId) => `<span class="rule-chip">Rule ${ruleId}: ${escapeHtml(getRuleDescription(ruleId, currency))}</span>`)
 		.join("");
+}
+
+function getRuleDescription(ruleId, currency) {
+	const normalizedCurrency = normalizeCurrencyCode(currency);
+	const thresholds = CURRENCY_THRESHOLDS[normalizedCurrency] || CURRENCY_THRESHOLDS.USD;
+
+	if (ruleId === 1) {
+		return `High Amount: amount > ${thresholds.highAmountLabel}`;
+	}
+
+	if (ruleId === 4) {
+		return `Daily Limit: payer volume exceeds ${thresholds.dailyLimitLabel} in 24h`;
+	}
+
+	return RULE_DEFINITIONS[ruleId] || "Unknown rule";
+}
+
+function normalizeCurrencyCode(currency) {
+	if (!currency || typeof currency !== "string") {
+		return "USD";
+	}
+	return currency.trim().toUpperCase();
 }
 
 function renderParties(alert) {

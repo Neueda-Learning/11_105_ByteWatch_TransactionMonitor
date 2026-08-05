@@ -8,6 +8,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * Evaluates an incoming transaction against the four core fraud rules
@@ -19,11 +21,17 @@ import java.util.List;
 public class RuleEngineService {
 
     // --- Rule thresholds -------------------------------------------------
-    private static final BigDecimal HIGH_AMOUNT_THRESHOLD = new BigDecimal("10000");
     private static final int VELOCITY_WINDOW_MINUTES = 5;
     private static final int VELOCITY_MAX_TXNS = 3;
-    private static final BigDecimal DAILY_LIMIT_THRESHOLD = new BigDecimal("50000");
     private static final int DAILY_WINDOW_HOURS = 24;
+        private static final int DAILY_LIMIT_MULTIPLIER = 5;
+
+        private static final Map<String, BigDecimal> HIGH_AMOUNT_THRESHOLDS = Map.of(
+            "USD", new BigDecimal("10000"),
+            "INR", new BigDecimal("500000"),
+            "GBP", new BigDecimal("7500"),
+            "EUR", new BigDecimal("9000")
+        );
 
     // --- Rule IDs (must match values persisted in alerts.rule_ids) -------
     public static final int RULE_HIGH_AMOUNT_ID = 1;
@@ -58,11 +66,15 @@ public class RuleEngineService {
             throw new IllegalArgumentException("transaction, timestamp, payerAccNum, and payeeAccNum are required");
         }
 
+        String normalizedCurrency = normalizeCurrency(txn.getCurrency());
+        BigDecimal highAmountThreshold = getHighAmountThreshold(normalizedCurrency);
+        BigDecimal dailyLimitThreshold = highAmountThreshold.multiply(BigDecimal.valueOf(DAILY_LIMIT_MULTIPLIER));
+
         List<Integer> triggeredRuleIds = new ArrayList<>();
         int score = 0;
 
         // Rule 1 - High Amount
-        if (txn.getAmount() != null && txn.getAmount().compareTo(HIGH_AMOUNT_THRESHOLD) > 0) {
+        if (txn.getAmount() != null && txn.getAmount().compareTo(highAmountThreshold) > 0) {
             triggeredRuleIds.add(RULE_HIGH_AMOUNT_ID);
             score += WEIGHT_HIGH_AMOUNT;
         }
@@ -83,15 +95,29 @@ public class RuleEngineService {
             score += WEIGHT_NEW_PAYEE;
         }
 
-        // Rule 4 - Daily Limit: payer's total in the last 24 hours exceeds $50,000
+        // Rule 4 - Daily Limit: payer's total in the last 24 hours exceeds per-currency limit.
         LocalDateTime dailyWindowStart = txn.getTimestamp().minusHours(DAILY_WINDOW_HOURS);
-        BigDecimal dailySum = transactionRepository.sumAmountByPayerSince(txn.getPayerAccNum(), dailyWindowStart);
-        if (dailySum.compareTo(DAILY_LIMIT_THRESHOLD) > 0) {
+        BigDecimal dailySum = transactionRepository.sumAmountByPayerAndCurrencySince(
+            txn.getPayerAccNum(),
+            normalizedCurrency,
+            dailyWindowStart);
+        if (dailySum.compareTo(dailyLimitThreshold) > 0) {
             triggeredRuleIds.add(RULE_DAILY_LIMIT_ID);
             score += WEIGHT_DAILY_LIMIT;
         }
 
         return new RuleEvaluationResult(triggeredRuleIds, score, getSeverityLevel(score));
+    }
+
+    private String normalizeCurrency(String currency) {
+        if (currency == null || currency.isBlank()) {
+            return "USD";
+        }
+        return currency.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private BigDecimal getHighAmountThreshold(String currency) {
+        return HIGH_AMOUNT_THRESHOLDS.getOrDefault(currency, HIGH_AMOUNT_THRESHOLDS.get("USD"));
     }
 
     /**
