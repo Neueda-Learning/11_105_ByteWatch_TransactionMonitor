@@ -170,13 +170,13 @@ h1 {
 	border-radius: 16px;
 	padding: 0.8rem 1rem;
 	box-shadow: var(--shadow);
-	animation: rise-in 450ms ease backwards;
+	/* animation: rise-in 450ms ease backwards; */
 }
 
-.metric:nth-child(1) { animation-delay: 80ms; }
+/* .metric:nth-child(1) { animation-delay: 80ms; }
 .metric:nth-child(2) { animation-delay: 140ms; }
 .metric:nth-child(3) { animation-delay: 200ms; }
-.metric:nth-child(4) { animation-delay: 260ms; }
+.metric:nth-child(4) { animation-delay: 260ms; } */
 
 .metric p {
 	margin: 0;

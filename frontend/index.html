@@ -25,13 +25,13 @@
                     <button id="simStartBtn" class="btn btn-primary" type="button">Start Live Feed</button>
                     <button id="simStopBtn" class="btn btn-secondary" type="button">Stop Feed</button>
                 </div>
-                <div class="sim-settings" aria-label="Simulation settings">
+                 <div class="sim-settings" aria-label="Simulation settings">
                     <label for="simMinDelay">Min ms</label>
                     <input id="simMinDelay" type="number" min="200" value="800">
                     <label for="simMaxDelay">Max ms</label>
                     <input id="simMaxDelay" type="number" min="200" value="2800">
-                    <label for="simSuspicious">Suspicious %</label>
-                    <input id="simSuspicious" type="number" min="0" max="100" value="35">
+                    <label for="simSuspicious" style="display:none">Suspicious %</label>
+                    <input id="simSuspicious" type="number" style="display:none" min="0" max="100">
                 </div>
                 <p class="small-meta">Live data from <span>/api/alerts</span> · Simulator <span id="simStatusText">OFF</span></p>
             </div>
