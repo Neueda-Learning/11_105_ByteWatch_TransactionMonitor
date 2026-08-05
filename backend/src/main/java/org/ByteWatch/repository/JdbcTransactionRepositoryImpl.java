@@ -76,9 +76,15 @@ public class JdbcTransactionRepositoryImpl implements TransactionRepository {
     }
 
     @Override
-    public BigDecimal sumAmountByPayerSince(String payerAccNum, LocalDateTime since) {
-        String sql = "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE payer_acc_num = ? AND timestamp >= ?";
-        BigDecimal sum = jdbcTemplate.queryForObject(sql, BigDecimal.class, payerAccNum, Timestamp.valueOf(since));
+    public BigDecimal sumAmountByPayerAndCurrencySince(String payerAccNum, String currency, LocalDateTime since) {
+        String sql = "SELECT COALESCE(SUM(amount), 0) FROM transactions " +
+                "WHERE payer_acc_num = ? AND currency = ? AND timestamp >= ?";
+        BigDecimal sum = jdbcTemplate.queryForObject(
+                sql,
+                BigDecimal.class,
+                payerAccNum,
+                currency,
+                Timestamp.valueOf(since));
         return sum == null ? BigDecimal.ZERO : sum;
     }
 }

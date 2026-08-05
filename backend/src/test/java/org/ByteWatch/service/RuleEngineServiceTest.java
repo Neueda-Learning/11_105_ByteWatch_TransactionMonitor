@@ -10,6 +10,7 @@ import org.ByteWatch.repository.TransactionRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -54,7 +55,8 @@ class RuleEngineServiceTest {
         Transaction txn = baselineTransaction(new BigDecimal("15000.00"));
         when(transactionRepository.countByPayerSince(anyString(), any())).thenReturn(0);
         when(transactionRepository.hasPriorTransactionToPayee(anyString(), anyString(), anyString())).thenReturn(true);
-        when(transactionRepository.sumAmountByPayerSince(anyString(), any())).thenReturn(new BigDecimal("15000.00"));
+        when(transactionRepository.sumAmountByPayerAndCurrencySince(anyString(), anyString(), any()))
+            .thenReturn(new BigDecimal("15000.00"));
 
         RuleEngineService.RuleEvaluationResult result = ruleEngineService.evaluate(txn);
 
@@ -68,7 +70,8 @@ class RuleEngineServiceTest {
         Transaction txn = baselineTransaction(new BigDecimal("10000.00"));
         when(transactionRepository.countByPayerSince(anyString(), any())).thenReturn(0);
         when(transactionRepository.hasPriorTransactionToPayee(anyString(), anyString(), anyString())).thenReturn(true);
-        when(transactionRepository.sumAmountByPayerSince(anyString(), any())).thenReturn(new BigDecimal("10000.00"));
+        when(transactionRepository.sumAmountByPayerAndCurrencySince(anyString(), anyString(), any()))
+            .thenReturn(new BigDecimal("10000.00"));
 
         RuleEngineService.RuleEvaluationResult result = ruleEngineService.evaluate(txn);
 
@@ -83,15 +86,45 @@ class RuleEngineServiceTest {
         Transaction txn = baselineTransaction(new BigDecimal("20000.00"));
         when(transactionRepository.countByPayerSince(anyString(), any())).thenReturn(5);
         when(transactionRepository.hasPriorTransactionToPayee(anyString(), anyString(), anyString())).thenReturn(false);
-        when(transactionRepository.sumAmountByPayerSince(anyString(), any())).thenReturn(new BigDecimal("20000.00"));
+        when(transactionRepository.sumAmountByPayerAndCurrencySince(anyString(), anyString(), any()))
+            .thenReturn(new BigDecimal("20000.00"));
 
         RuleEngineService.RuleEvaluationResult result = ruleEngineService.evaluate(txn);
 
         assertEquals(85, result.getSeverityScore());
         assertEquals("HIGH", result.getSeverityLevel());
         assertTrue(result.getTriggeredRuleIds().containsAll(
-                java.util.List.of(RuleEngineService.RULE_HIGH_AMOUNT_ID,
+                List.of(RuleEngineService.RULE_HIGH_AMOUNT_ID,
                         RuleEngineService.RULE_HIGH_VELOCITY_ID,
                         RuleEngineService.RULE_NEW_PAYEE_ID)));
+    }
+
+    @Test
+    void highAmountRule_usesInrThreshold() {
+        Transaction txn = baselineTransaction(new BigDecimal("600000.00"));
+        txn.setCurrency("INR");
+        when(transactionRepository.countByPayerSince(anyString(), any())).thenReturn(0);
+        when(transactionRepository.hasPriorTransactionToPayee(anyString(), anyString(), anyString())).thenReturn(true);
+        when(transactionRepository.sumAmountByPayerAndCurrencySince(anyString(), anyString(), any()))
+                .thenReturn(new BigDecimal("600000.00"));
+
+        RuleEngineService.RuleEvaluationResult result = ruleEngineService.evaluate(txn);
+
+        assertTrue(result.getTriggeredRuleIds().contains(RuleEngineService.RULE_HIGH_AMOUNT_ID));
+    }
+
+    @Test
+    void dailyLimitRule_usesFiveTimesPerCurrencyThreshold() {
+        Transaction txn = baselineTransaction(new BigDecimal("9000.00"));
+        txn.setCurrency("EUR");
+        when(transactionRepository.countByPayerSince(anyString(), any())).thenReturn(0);
+        when(transactionRepository.hasPriorTransactionToPayee(anyString(), anyString(), anyString())).thenReturn(true);
+        // EUR daily limit is 5 * 9000 = 45000, so 46000 should trigger.
+        when(transactionRepository.sumAmountByPayerAndCurrencySince(anyString(), anyString(), any()))
+                .thenReturn(new BigDecimal("46000.00"));
+
+        RuleEngineService.RuleEvaluationResult result = ruleEngineService.evaluate(txn);
+
+        assertTrue(result.getTriggeredRuleIds().contains(RuleEngineService.RULE_DAILY_LIMIT_ID));
     }
 }

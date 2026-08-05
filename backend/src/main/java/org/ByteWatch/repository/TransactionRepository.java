@@ -39,7 +39,7 @@ public interface TransactionRepository {
 
     /**
      * Rule 4 (Daily Limit) support: sums the amount of all transactions
-     * made by the given payer at or after {@code since}.
+     * made by the given payer in the given currency at or after {@code since}.
      */
-    BigDecimal sumAmountByPayerSince(String payerAccNum, LocalDateTime since);
+    BigDecimal sumAmountByPayerAndCurrencySince(String payerAccNum, String currency, LocalDateTime since);
 }
