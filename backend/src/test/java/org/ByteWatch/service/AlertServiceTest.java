@@ -66,15 +66,22 @@ class AlertServiceTest {
     }
 
     @Test
-    void updateAlertStatus_dismissWithoutComment_throwsIllegalArgumentException() {
+    void updateAlertStatus_dismissWithoutComment_usesDefaultCommentAndSucceeds() {
         when(alertRepository.findById(1L)).thenReturn(Optional.of(investigatingAlert()));
+        when(alertRepository.findAlertDetailById(1L)).thenReturn(Optional.of(alertDetailStub()));
+        when(alertLogRepository.findByAlertId(1L)).thenReturn(List.of());
 
         AlertStatusUpdateRequest request = new AlertStatusUpdateRequest("DISMISSED", "   ");
 
-        assertThrows(IllegalArgumentException.class, () -> alertService.updateAlertStatus(1L, request));
+        AlertDetailDTO result = alertService.updateAlertStatus(1L, request);
 
-        verify(alertRepository, never()).updateStatus(any(), any());
-        verify(alertLogRepository, never()).insert(any());
+        verify(alertRepository, times(1)).updateStatus(eq(1L), eq("DISMISSED"));
+
+        ArgumentCaptor<AlertLog> logCaptor = ArgumentCaptor.forClass(AlertLog.class);
+        verify(alertLogRepository, times(1)).insert(logCaptor.capture());
+        AlertLog capturedLog = logCaptor.getValue();
+        assertEquals("No comment added", capturedLog.getComment());
+        assertEquals("DISMISSED", result.getStatus());
     }
 
     @Test

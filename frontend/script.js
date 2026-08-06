@@ -803,7 +803,7 @@ function renderAuditLogs(logs) {
 		.map((log) => `
 			<article class="audit-log">
 				<p><strong>${escapeHtml(log.status || "-")}</strong> · ${formatDateTime(log.logTimestamp)}</p>
-				<p>${escapeHtml(log.comment || "No comment")}</p>
+				<p>${escapeHtml(log.comment || "No comment added")}</p>
 			</article>
 		`)
 		.join("");
@@ -863,7 +863,7 @@ async function updateAlertStatus(alertId, targetStatus, options = {}) {
 			status: targetStatus,
 			auditEntry: {
 				status: targetStatus,
-				comment: comment || "No comment provided.",
+				comment: comment || "No comment added",
 				logTimestamp: nowIso
 			}
 		});

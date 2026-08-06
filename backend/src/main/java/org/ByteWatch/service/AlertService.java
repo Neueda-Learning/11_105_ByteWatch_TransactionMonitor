@@ -40,8 +40,8 @@ public class AlertService {
             STATUS_INVESTIGATING, Set.of(STATUS_DISMISSED, STATUS_CLOSED)
     );
 
-    /** Terminal statuses that require a mandatory comment/reason for the audit trail. */
-    private static final Set<String> COMMENT_REQUIRED_STATUSES = Set.of(STATUS_DISMISSED, STATUS_CLOSED);
+    /** Default audit comment used when analysts do not provide one. */
+    private static final String DEFAULT_AUDIT_COMMENT = "No comment added";
 
     private final TransactionRepository transactionRepository;
     private final AlertRepository alertRepository;
@@ -116,13 +116,11 @@ public class AlertService {
 
     /**
      * Transitions an alert to a new status, validating the allowed
-     * workflow order and the mandatory-comment rule for DISMISSED/CLOSED,
-     * then writes an audit log entry for the change.
+    * workflow order, then writes an audit log entry for the change.
      *
      * @throws NoSuchElementException   if no alert exists with the given ID
      * @throws IllegalArgumentException if the status is missing, the
-     *                                  transition is not allowed, or a
-     *                                  required comment is missing/blank
+    *                                  transition is not allowed
      */
     public AlertDetailDTO updateAlertStatus(Long alertId, AlertStatusUpdateRequest request) {
         if (request == null) {
@@ -138,17 +136,11 @@ public class AlertService {
 
         validateTransition(alert.getStatus(), newStatus);
 
-        if (COMMENT_REQUIRED_STATUSES.contains(newStatus)
-                && (request.getComment() == null || request.getComment().isBlank())) {
-            throw new IllegalArgumentException(
-                    "A comment is required when setting status to " + newStatus);
-        }
-
         alertRepository.updateStatus(alertId, newStatus);
 
         AlertLog log = new AlertLog();
         log.setAlertId(alertId);
-        log.setComment(request.getComment() == null ? "" : request.getComment());
+        log.setComment(normalizeComment(request.getComment()));
         log.setStatus(newStatus);
         log.setLogTimestamp(LocalDateTime.now());
         alertLogRepository.insert(log);
@@ -163,6 +155,14 @@ public class AlertService {
             throw new IllegalArgumentException(
                     "Cannot transition alert from " + currentStatus + " to " + newStatus);
         }
+    }
+
+    private String normalizeComment(String comment) {
+        if (comment == null) {
+            return DEFAULT_AUDIT_COMMENT;
+        }
+        String trimmed = comment.trim();
+        return trimmed.isEmpty() ? DEFAULT_AUDIT_COMMENT : trimmed;
     }
 
     /**
