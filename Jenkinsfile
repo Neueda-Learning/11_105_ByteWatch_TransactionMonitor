@@ -7,6 +7,7 @@ pipeline {
         BRANCH = 'main'
         COMPOSE_FILE = "${WORKSPACE}/docker-compose.yml"
         COMPOSE_CMD = 'docker-compose'
+        DB_PASSWORD = credentials('bytewatch-db-password')
     }
 
     stages {
@@ -63,9 +64,7 @@ pipeline {
             steps {
                 // DB_PASSWORD is injected from Jenkins Credentials at deploy time —
                 // never written to this file or to build logs.
-                withCredentials([string(credentialsId: 'bytewatch-db-password', variable: 'DB_PASSWORD')]) {
-                    sh '$COMPOSE_CMD -f "$COMPOSE_FILE" up -d'
-                }
+                sh '$COMPOSE_CMD -f "$COMPOSE_FILE" up -d'
             }
         }
 
