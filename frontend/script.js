@@ -843,14 +843,14 @@ function getActionClass(tone) {
 async function updateAlertStatus(alertId, targetStatus, options = {}) {
 	const commentFromInput = elements.actionComment.value.trim();
 	const comment = options.overrideComment ?? commentFromInput;
-	const commentRequired = targetStatus === "DISMISSED" || targetStatus === "CLOSED";
+	// const commentRequired = targetStatus === "DISMISSED" || targetStatus === "CLOSED";
 	const silentSuccess = options.silentSuccess === true;
 	const skipRender = options.skipRender === true;
 
-	if (commentRequired && !comment) {
-		showToast(`Comment is required for ${targetStatus}.`);
-		return false;
-	}
+	// if (commentRequired && !comment) {
+	// 	showToast(`Comment is required for ${targetStatus}.`);
+	// 	return false;
+	// }
 
 	if (state.usingDemoData) {
 		const alert = state.alerts.find((item) => item.alertId === alertId);
