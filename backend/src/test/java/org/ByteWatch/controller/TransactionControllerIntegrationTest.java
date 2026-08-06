@@ -165,4 +165,16 @@ class TransactionControllerIntegrationTest {
                 .andExpect(jsonPath("$.items[0].txnId").value("TXN-LIVE-001"))
                 .andExpect(jsonPath("$.items[0].hasAlert").value(true));
     }
+
+        @Test
+        void getLiveTransactions_whenServiceRejectsInput_returns400() throws Exception {
+                when(transactionFeedService.getRecentTransactionsPage(eq(0), eq(15)))
+                                .thenThrow(new IllegalArgumentException("page must be >= 1"));
+
+                mockMvc.perform(get("/api/transactions/live")
+                                                .param("page", "0")
+                                                .param("pageSize", "15"))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.error").value("page must be >= 1"));
+        }
 }
