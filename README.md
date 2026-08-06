@@ -1,279 +1,120 @@
 # ByteWatch Transaction Monitor
 
-ByteWatch is a transaction monitoring and alert management system built for risk analysts.
+ByteWatch helps analysts spot risky payment behavior early by monitoring incoming transactions, scoring risk signals, and creating actionable alerts.
 
-The project provides:
-- a Spring Boot + JDBC backend that evaluates incoming transactions against risk rules,
-- a browser-based frontend for alert triage and lifecycle actions,
-- seeded demo data for consistent local testing and demos.
+This repository includes:
+- A backend that evaluates transactions against fraud-like rules and records the alert lifecycle.
+- A portable, browser-based UI for triage, live simulation, and transaction visibility.
+- Automation and test coverage to support reliable demos and releases.
 
-## Project Structure
 
-```text
-11_105_ByteWatch_TransactionMonitor/
-  backend/
-    src/main/java/org/ByteWatch/
-      controller/
-      model/
-      repository/
-      service/
-      config/
-      TransactionMonitoringApplication.java
-    src/main/resources/
-      application.properties
-      schema.sql
-      data.sql
-    src/test/java/org/ByteWatch/
-      controller/
-      service/
-    pom.xml
-  frontend/
-    index.html
-    script.js
-    styles.css
-  UserInterview.md
-```
+## At A Glance
 
-## Functional Scope
+### Problem it solves
+Manual alert handling is slow and inconsistent when transaction volume grows. ByteWatch automates first-pass risk detection and gives analysts a structured review flow.
 
-### Backend capabilities
-- Accepts transaction intake requests and persists raw transaction records.
-- Evaluates each transaction against four risk rules.
-- Creates alerts automatically when one or more rules are triggered.
-- Supports alert lifecycle transitions with strict workflow validation.
-- Enforces mandatory comments for DISMISSED and CLOSED states.
-- Captures alert status history in an audit log.
-- Exposes dashboard-oriented alert list and alert detail APIs.
+### How it works
+1. A transaction enters the system.
+2. The rule engine evaluates four risk checks.
+3. If risk rules trigger, an alert is opened with a severity score.
+4. Analysts review, investigate, and close or dismiss using a controlled lifecycle.
+5. Every action is logged for traceability.
 
-### Frontend capabilities
-- Shows active alerts with severity and status filtering.
-- Displays alert details, triggered rules, payer/payee context, and audit history.
-- Supports status transitions through backend APIs.
-- Falls back to demo data when backend is unavailable.
+### Core outcomes
+- Faster identification of suspicious activity.
+- Consistent alert handling process.
+- Auditability of analyst actions.
+- A demo-ready workflow that can run locally or in containers.
 
-## Technology Stack
+## Functional Highlights
 
-### Backend
-- Java 17
-- Spring Boot 3.5.5
-- Spring Web
-- Spring JDBC
-- MySQL 8+
-- springdoc OpenAPI UI 2.8.9
-- Maven
-- JUnit 5 + Mockito + Spring MockMvc
+- Transaction intake with validation and duplicate-protection.
+- Multi-rule risk scoring with severity tiers.
+- Alert queue, detail view, lifecycle actions, and audit trail.
+- Live simulation feed to generate realistic transaction traffic.
+- Portable UI that runs as a static app and adapts to desktop/mobile.
+- Demo fallback mode in UI when backend is unreachable.
 
-### Frontend
-- HTML5
-- Vanilla JavaScript
-- CSS3
+## Extra Enhancements Included
 
-## Business Rules and Scoring
+- Portable UI behavior:
+  - Responsive layout for desktop and mobile.
+  - Stateless static frontend packaging with Docker + Nginx.
+  - No build-step dependency for basic browser use.
+- Accessibility improvements:
+  - Semantic regions and labels in the UI.
+  - Live region usage for dynamic updates.
+  - Keyboard-friendly controls and visible focus states.
+- Data validation:
+  - Request-level validation for transaction payloads.
+  - Service-level guardrails for null/incomplete requests.
+  - Structured API error responses for clients.
+- Quality and automation:
+  - Unit and integration tests across controllers, services, repository behavior, models, and configuration.
+  - CI pipeline runs backend build and tests before container deployment.
 
-The rule engine evaluates each transaction against the following rules:
+## Detailed Documentation Map
 
-1. High Amount Rule
-- Trigger when amount is greater than 10,000.
-- Weight: 40
+- Backend implementation details: [docs/IMPLEMENTATION-BACKEND.md](docs/IMPLEMENTATION-BACKEND.md)
+- Frontend and UX details: [docs/IMPLEMENTATION-FRONTEND.md](docs/IMPLEMENTATION-FRONTEND.md)
+- Testing, coverage, accessibility, and operations: [docs/QUALITY-TESTING-OPERATIONS.md](docs/QUALITY-TESTING-OPERATIONS.md)
 
-2. High Velocity Rule
-- Trigger when a payer has more than 3 transactions in the last 5 minutes.
-- Weight: 30
+## Quick Start
 
-3. New Payee Rule
-- Trigger when a payer has no prior transaction history with the payee.
-- Weight: 15
-
-4. Daily Limit Rule
-- Trigger when payer transaction total in the previous 24 hours exceeds 50,000.
-- Weight: 25
-
-Severity levels are derived from total score:
-- HIGH: score >= 60
-- MEDIUM: score >= 30
-- LOW: score < 30
-
-## Alert Lifecycle
-
-Allowed transitions:
-- OPEN -> ACKNOWLEDGED
-- ACKNOWLEDGED -> INVESTIGATING
-- INVESTIGATING -> DISMISSED or CLOSED
-
-Validation rules:
-- Direct jumps are rejected.
-- Terminal actions DISMISSED and CLOSED require a non-blank comment.
-- Each status change writes an entry to alert_log.
-
-## Data Model
-
-Primary tables:
-- customers: reference account and customer details.
-- transactions: raw intake stream used for rule evaluation.
-- alerts: generated risk alerts (status, severity, triggered rules).
-- alert_log: audit trail of analyst actions and status changes.
-
-Initialization behavior:
-- schema.sql creates tables and performance indexes.
-- data.sql resets and reseeds demo data on startup.
-- spring.sql.init.mode=always ensures repeatable local demos.
-
-## API Endpoints
-
-Base URL: http://localhost:8080
-
-### Transaction intake
-- POST /api/transactions
-- Persists transaction and returns intake result including generated alert (if any).
-
-Example payload:
-
-```json
-{
-  "txnId": "TXN-2001",
-  "timestamp": "2026-08-04T10:00:00",
-  "amount": 15000.00,
-  "currency": "USD",
-  "payeeAccNum": "ACC-1003",
-  "payerAccNum": "ACC-1010",
-  "status": "PENDING",
-  "type": "TRANSFER"
-}
-```
-
-### Active alert queue
-- GET /api/alerts
-- Returns OPEN, ACKNOWLEDGED, and INVESTIGATING alerts enriched with transaction and customer details.
-
-### Alert detail
-- GET /api/alerts/{id}
-- Returns complete alert detail including severity level and audit trail.
-
-### Update alert status
-- PUT /api/alerts/{id}/status
-- Validates lifecycle transition and writes audit log.
-
-Example payload:
-
-```json
-{
-  "status": "DISMISSED",
-  "comment": "Verified legitimate transfer with customer"
-}
-```
-
-## Local Setup
-
-### Prerequisites
-- Java 17
-- Maven 3.9+
-- MySQL 8+
-
-### 1) Clone and enter backend
+### Option 1: Docker Compose (recommended for full stack)
+1. Set DB password in environment (or .env for compose).
+2. Run from repository root:
 
 ```bash
-git clone <repo-url>
-cd 11_105_ByteWatch_TransactionMonitor/backend
+docker-compose up --build
 ```
 
-### 2) Configure database credentials
+3. Open:
+- Frontend: http://localhost:8081
+- Backend health: http://localhost:8082/actuator/health
 
-The backend reads credentials from environment variables.
-
-Windows PowerShell:
-
-```powershell
-$env:DB_USERNAME="root"
-$env:DB_PASSWORD="your_password"
-```
-
-macOS/Linux:
-
-```bash
-export DB_USERNAME=root
-export DB_PASSWORD=your_password
-```
-
-### 3) Run backend
+### Option 2: Local backend + static frontend
+1. Start MySQL and set DB credentials for backend runtime.
+2. Run backend from [backend](backend):
 
 ```bash
 mvn spring-boot:run
 ```
 
-If port 8080 is already in use:
+3. Open [frontend/index.html](frontend/index.html) directly in browser.
 
-```bash
-mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8081
+## Current Validation Snapshot
+
+Latest local backend run:
+- Command: mvn test
+- Result: PASS
+- Total tests: 50
+- Failures: 0
+- Errors: 0
+- Skipped: 0
+
+## Code Coverage Snapshot (Backend)
+
+Latest JaCoCo summary:
+- Instruction coverage: 95.40% (2718/2849)
+- Line coverage: 94.69% (713/753)
+- Branch coverage: 69.23% (90/130)
+- Method coverage: 96.28% (259/269)
+- Complexity coverage: 86.23% (288/334)
+
+Interpretation at a glance:
+- Overall execution-path coverage is strong (instruction/line/method).
+- Branch coverage is lower than line coverage, indicating room to expand edge-case and conditional-path testing.
+
+## Repository Structure
+
+```text
+backend/     Spring Boot APIs, rule engine, persistence, tests
+frontend/    Static UI (HTML/CSS/JS), live dashboard and transaction view
+docs/        Audience-focused technical documentation
 ```
-
-### 4) Open API docs
-- Swagger UI: http://localhost:8080/swagger-ui/index.html
-- OpenAPI spec: http://localhost:8080/v3/api-docs
-
-## Frontend Usage
-
-The frontend is static and does not require a build step.
-
-Option 1:
-- Open frontend/index.html in a browser.
-
-Option 2:
-- Serve frontend via any static server and open in browser.
-
-The page calls:
-- http://localhost:8080/api/alerts
-
-If backend is unreachable, the UI switches to built-in demo alerts.
-
-## Testing
-
-From backend directory:
-
-Run all tests:
-
-```bash
-mvn test
-```
-
-Compile only:
-
-```bash
-mvn -DskipTests clean compile
-```
-
-Current test coverage areas:
-- Controller contract tests for transaction intake and alert status update endpoints.
-- Service unit tests for lifecycle validation and rule evaluation scoring.
-
-## Troubleshooting
-
-### Cannot find symbol AlertService or service package errors
-- Cause: branch drift where service/repository files are missing in current branch.
-- Fix: sync from develop and re-run compile.
-
-### Public Key Retrieval is not allowed
-- Ensure MySQL connection includes allowPublicKeyRetrieval=true.
-
-### Access denied for DB user
-- Verify DB_USERNAME and DB_PASSWORD are set in the same shell session used to start Maven.
-
-### Port already in use
-- Start on another port using spring-boot.run.arguments.
-
-### Swagger loads but endpoints fail
-- Check backend logs for datasource initialization failures or SQL syntax errors.
-
-## Branching and Release Flow
-
-Recommended workflow:
-1. Do regular development on develop.
-2. Run compile and tests on develop.
-3. Merge develop into main only when build is green.
-4. Keep main stable for demos and release snapshots.
-
-For this repository, local push guard hooks may block direct pushes to main unless explicitly overridden.
 
 ## Notes
 
-- This project intentionally uses Spring JDBC (not JPA/Hibernate) for explicit SQL control.
-- Seed data is deterministic so demos and debugging start from a known state.
+- This project intentionally uses Spring JDBC for explicit SQL control.
+- Seeded schema/data support consistent demo behavior across runs.
