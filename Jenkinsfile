@@ -3,10 +3,9 @@ pipeline {
     agent any
 
     environment {
-        GIT_URL = 'https://github.com/Neueda-Learning/11_105_ByteWatch_TransactionMonitor.git'
-        BRANCH = 'main'
         COMPOSE_FILE = "${WORKSPACE}/docker-compose.yml"
         COMPOSE_CMD = 'docker-compose'
+        BACKEND_HOST_PORT = '8082'
         DB_PASSWORD = credentials('bytewatch-db-password')
     }
 
@@ -14,7 +13,7 @@ pipeline {
 
         stage('Checkout Source') {
             steps {
-                git branch: "${BRANCH}", url: "${GIT_URL}"
+                checkout scm
             }
         }
 
@@ -42,6 +41,7 @@ pipeline {
                     pwd
                     ls -la
                     test -f "$COMPOSE_FILE"
+                    grep -n '8082:8080' "$COMPOSE_FILE"
                 '''
             }
         }
@@ -72,7 +72,7 @@ pipeline {
             steps {
                 sh '''
                     for i in $(seq 1 10); do
-                        if curl -fs http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
+                        if curl -fs "http://localhost:${BACKEND_HOST_PORT}/actuator/health" | grep -q '"status":"UP"'; then
                             echo "Backend is healthy."
                             exit 0
                         fi
