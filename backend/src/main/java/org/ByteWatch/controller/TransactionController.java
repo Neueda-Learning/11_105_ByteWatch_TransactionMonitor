@@ -11,11 +11,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.ByteWatch.model.Transaction;
-import org.ByteWatch.model.TransactionLiveViewDTO;
+import org.ByteWatch.model.TransactionLivePageResponse;
 import org.ByteWatch.service.AlertService;
 import org.ByteWatch.service.TransactionFeedService;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -40,9 +39,10 @@ public class TransactionController {
      * Returns most recent transactions for realtime polling views.
      */
     @GetMapping("/live")
-    public ResponseEntity<List<TransactionLiveViewDTO>> getLiveTransactions(
-            @RequestParam(required = false) Integer limit) {
-        return ResponseEntity.ok(transactionFeedService.getRecentTransactions(limit));
+    public ResponseEntity<TransactionLivePageResponse> getLiveTransactions(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
+        return ResponseEntity.ok(transactionFeedService.getRecentTransactionsPage(page, pageSize));
     }
 
     /**

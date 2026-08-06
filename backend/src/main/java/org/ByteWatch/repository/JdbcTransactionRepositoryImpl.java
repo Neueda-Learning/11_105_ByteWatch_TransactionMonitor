@@ -105,11 +105,23 @@ public class JdbcTransactionRepositoryImpl implements TransactionRepository {
 
     @Override
     public List<TransactionLiveViewDTO> findRecentTransactions(int limit) {
+        return findRecentTransactionsPage(limit, 0);
+    }
+
+    @Override
+    public List<TransactionLiveViewDTO> findRecentTransactionsPage(int limit, int offset) {
         String sql = "SELECT t.txn_id, t.timestamp, t.amount, t.currency, t.payee_acc_num, t.payer_acc_num, t.status, t.type, " +
                 "EXISTS (SELECT 1 FROM alerts a WHERE a.txn_id = t.txn_id) AS has_alert " +
                 "FROM transactions t " +
                 "ORDER BY t.timestamp DESC " +
-                "LIMIT ?";
-        return jdbcTemplate.query(sql, TRANSACTION_LIVE_VIEW_ROW_MAPPER, limit);
+                "LIMIT ? OFFSET ?";
+        return jdbcTemplate.query(sql, TRANSACTION_LIVE_VIEW_ROW_MAPPER, limit, offset);
+    }
+
+    @Override
+    public long countTransactions() {
+        String sql = "SELECT COUNT(*) FROM transactions";
+        Long count = jdbcTemplate.queryForObject(sql, Long.class);
+        return count == null ? 0L : count;
     }
 }

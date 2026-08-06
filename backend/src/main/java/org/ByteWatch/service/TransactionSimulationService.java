@@ -28,7 +28,7 @@ public class TransactionSimulationService {
     private static final int DEFAULT_MIN_DELAY_MS = 800;
     private static final int DEFAULT_MAX_DELAY_MS = 2800;
     private static final double DEFAULT_BURST_CHANCE = 0.25;
-    private static final double DEFAULT_SUSPICIOUS_CHANCE = 0.05;
+    private static final double DEFAULT_SUSPICIOUS_CHANCE = 0.15;
 
     private static final List<String> ACCOUNT_POOL = List.of(
             "ACC-1001", "ACC-1002", "ACC-1003", "ACC-1004", "ACC-1005",

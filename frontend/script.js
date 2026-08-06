@@ -135,6 +135,12 @@ const state = {
 	activeView: "dashboard",
 	transactions: [],
 	transactionsLoading: false,
+	transactionsPage: 1,
+	transactionsPageSize: 40,
+	transactionsTotalItems: 0,
+	transactionsTotalPages: 1,
+	transactionsHasPrevious: false,
+	transactionsHasNext: false,
 	transactionsPollTimer: null,
 	simulationRunning: false,
 	simulationStatusTimer: null,
@@ -148,6 +154,10 @@ const elements = {
 	transactionsView: document.getElementById("transactionsView"),
 	transactionsRefreshBtn: document.getElementById("transactionsRefreshBtn"),
 	transactionsStatusText: document.getElementById("transactionsStatusText"),
+	rowsPerPage: document.getElementById("rowsPerPage"),
+	transactionsPrevBtn: document.getElementById("transactionsPrevBtn"),
+	transactionsNextBtn: document.getElementById("transactionsNextBtn"),
+	transactionsPageLabel: document.getElementById("transactionsPageLabel"),
 	transactionsCount: document.getElementById("transactionsCount"),
 	transactionsTableBody: document.getElementById("transactionsTableBody"),
 	simStartBtn: document.getElementById("simStartBtn"),
@@ -191,8 +201,25 @@ async function init() {
 function wireEvents() {
 	elements.refreshBtn.addEventListener("click", () => loadAlerts(true));
 	elements.transactionsRefreshBtn.addEventListener("click", () => loadTransactions(true));
+	elements.transactionsPrevBtn.addEventListener("click", () => changeTransactionsPage(-1));
+	elements.transactionsNextBtn.addEventListener("click", () => changeTransactionsPage(1));
 	elements.simStartBtn.addEventListener("click", () => startSimulationFeed());
 	elements.simStopBtn.addEventListener("click", () => stopSimulationFeed());
+
+	elements.rowsPerPage.addEventListener("click", (event) => {
+		const target = event.target.closest("button[data-size]");
+		if (!target) {
+			return;
+		}
+		const nextSize = Number(target.dataset.size);
+		if (!Number.isFinite(nextSize) || nextSize === state.transactionsPageSize) {
+			return;
+		}
+		state.transactionsPageSize = nextSize;
+		state.transactionsPage = 1;
+		updateRowsPerPageButtons();
+		loadTransactions(false);
+	});
 
 	elements.sideNav.addEventListener("click", (event) => {
 		const target = event.target.closest("button[data-view]");
@@ -260,31 +287,77 @@ function stopTransactionsPolling() {
 async function loadTransactions(showToastOnSuccess) {
 	state.transactionsLoading = true;
 	elements.transactionsRefreshBtn.disabled = true;
+	elements.transactionsPrevBtn.disabled = true;
+	elements.transactionsNextBtn.disabled = true;
 	elements.transactionsStatusText.textContent = "Refreshing...";
 
 	try {
-		const response = await fetch(`${TRANSACTIONS_API_BASE}/live?limit=60`);
+		const params = new URLSearchParams({
+			page: String(state.transactionsPage),
+			pageSize: String(state.transactionsPageSize)
+		});
+		const response = await fetch(`${TRANSACTIONS_API_BASE}/live?${params.toString()}`);
 		if (!response.ok) {
 			throw new Error(`Failed to fetch transactions (${response.status})`);
 		}
 		const data = await response.json();
-		state.transactions = Array.isArray(data) ? data : [];
+		state.transactions = Array.isArray(data?.items) ? data.items : [];
+		state.transactionsPage = Number.isFinite(data?.page) ? data.page : state.transactionsPage;
+		state.transactionsPageSize = Number.isFinite(data?.pageSize) ? data.pageSize : state.transactionsPageSize;
+		state.transactionsTotalItems = Number.isFinite(data?.totalItems) ? data.totalItems : state.transactions.length;
+		state.transactionsTotalPages = Number.isFinite(data?.totalPages) ? data.totalPages : 1;
+		state.transactionsHasPrevious = Boolean(data?.hasPrevious);
+		state.transactionsHasNext = Boolean(data?.hasNext);
 		renderTransactionsTable();
-		elements.transactionsStatusText.textContent = `Live · ${state.transactions.length} rows`;
+		updateTransactionsPaginationControls();
+		updateRowsPerPageButtons();
+		elements.transactionsStatusText.textContent = `Live · ${state.transactions.length} rows (total ${state.transactionsTotalItems})`;
 		if (showToastOnSuccess) {
 			showToast("Transactions refreshed.");
 		}
 	} catch (error) {
+		state.transactions = [];
+		state.transactionsTotalItems = 0;
+		state.transactionsTotalPages = 1;
+		state.transactionsHasPrevious = false;
+		state.transactionsHasNext = false;
 		elements.transactionsStatusText.textContent = "Unavailable";
 		elements.transactionsTableBody.innerHTML =
 			'<tr><td colspan="8" class="empty-list">Could not load transactions feed.</td></tr>';
+		updateTransactionsPaginationControls();
 		if (showToastOnSuccess) {
 			showToast(error.message);
 		}
 	} finally {
 		state.transactionsLoading = false;
 		elements.transactionsRefreshBtn.disabled = false;
+		updateTransactionsPaginationControls();
 	}
+}
+
+function changeTransactionsPage(delta) {
+	if (state.transactionsLoading) {
+		return;
+	}
+	const nextPage = state.transactionsPage + delta;
+	if (nextPage < 1 || nextPage > state.transactionsTotalPages) {
+		return;
+	}
+	state.transactionsPage = nextPage;
+	loadTransactions(false);
+}
+
+function updateRowsPerPageButtons() {
+	Array.from(elements.rowsPerPage.querySelectorAll("button[data-size]")).forEach((button) => {
+		const size = Number(button.dataset.size);
+		button.classList.toggle("active", size === state.transactionsPageSize);
+	});
+}
+
+function updateTransactionsPaginationControls() {
+	elements.transactionsPageLabel.textContent = `Page ${state.transactionsPage}`;
+	elements.transactionsPrevBtn.disabled = state.transactionsLoading || !state.transactionsHasPrevious;
+	elements.transactionsNextBtn.disabled = state.transactionsLoading || !state.transactionsHasNext;
 }
 
 function renderTransactionsTable() {

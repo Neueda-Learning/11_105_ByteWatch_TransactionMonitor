@@ -130,6 +130,12 @@
                         <h1>Realtime Transactions</h1>
                     </div>
                     <div class="topbar-actions">
+                        <div class="rows-per-page" id="rowsPerPage" aria-label="Rows per page">
+                            <span>Rows per page:</span>
+                            <button class="filter-pill" data-size="25" type="button">25</button>
+                            <button class="filter-pill active" data-size="40" type="button">40</button>
+                            <button class="filter-pill" data-size="60" type="button">60</button>
+                        </div>
                         <button id="transactionsRefreshBtn" class="btn btn-secondary" type="button">Refresh Transactions</button>
                         <p class="small-meta">Polling <span>/api/transactions/live</span> · <span id="transactionsStatusText">Idle</span></p>
                     </div>
@@ -156,6 +162,11 @@
                             </thead>
                             <tbody id="transactionsTableBody"></tbody>
                         </table>
+                    </div>
+                    <div class="transactions-pagination" aria-label="Transactions pagination">
+                        <button id="transactionsPrevBtn" class="btn btn-secondary" type="button" disabled>Previous</button>
+                        <span id="transactionsPageLabel" class="mono">Page 1</span>
+                        <button id="transactionsNextBtn" class="btn btn-secondary" type="button" disabled>Next</button>
                     </div>
                 </section>
             </section>

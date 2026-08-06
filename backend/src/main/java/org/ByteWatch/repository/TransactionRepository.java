@@ -49,4 +49,14 @@ public interface TransactionRepository {
      * Realtime feed support: fetches latest transactions with an alert flag.
      */
     List<TransactionLiveViewDTO> findRecentTransactions(int limit);
+
+    /**
+     * Realtime feed support: fetches latest transactions page with offset.
+     */
+    List<TransactionLiveViewDTO> findRecentTransactionsPage(int limit, int offset);
+
+    /**
+     * Realtime feed support: total transactions available for pagination.
+     */
+    long countTransactions();
 }

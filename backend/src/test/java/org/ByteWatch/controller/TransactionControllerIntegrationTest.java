@@ -3,6 +3,8 @@ package org.ByteWatch.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ByteWatch.model.Alert;
 import org.ByteWatch.model.Transaction;
+import org.ByteWatch.model.TransactionLivePageResponse;
+import org.ByteWatch.model.TransactionLiveViewDTO;
 import org.ByteWatch.service.AlertService;
 import org.ByteWatch.service.TransactionFeedService;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,10 +15,13 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -72,5 +77,39 @@ class TransactionControllerIntegrationTest {
                 .andExpect(jsonPath("$.severityLevel").value("MEDIUM"))
                 .andExpect(jsonPath("$.transaction.txnId").value("TXN-INT-001"))
                 .andExpect(jsonPath("$.alert.id").value(101));
+    }
+
+    @Test
+    void getLiveTransactions_returnsPaginatedPayload() throws Exception {
+        TransactionLiveViewDTO row = new TransactionLiveViewDTO();
+        row.setTxnId("TXN-LIVE-001");
+        row.setTimestamp(LocalDateTime.of(2026, 8, 3, 18, 25));
+        row.setAmount(new BigDecimal("250.00"));
+        row.setCurrency("USD");
+        row.setHasAlert(true);
+
+        TransactionLivePageResponse page = new TransactionLivePageResponse();
+        page.setItems(List.of(row));
+        page.setPage(2);
+        page.setPageSize(25);
+        page.setTotalItems(101);
+        page.setTotalPages(5);
+        page.setHasPrevious(true);
+        page.setHasNext(true);
+
+        when(transactionFeedService.getRecentTransactionsPage(eq(2), eq(25))).thenReturn(page);
+
+        mockMvc.perform(get("/api/transactions/live")
+                        .param("page", "2")
+                        .param("pageSize", "25"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(2))
+                .andExpect(jsonPath("$.pageSize").value(25))
+                .andExpect(jsonPath("$.totalItems").value(101))
+                .andExpect(jsonPath("$.totalPages").value(5))
+                .andExpect(jsonPath("$.hasPrevious").value(true))
+                .andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.items[0].txnId").value("TXN-LIVE-001"))
+                .andExpect(jsonPath("$.items[0].hasAlert").value(true));
     }
 }

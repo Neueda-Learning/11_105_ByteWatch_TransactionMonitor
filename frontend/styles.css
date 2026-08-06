@@ -131,6 +131,16 @@ h1 {
 	align-items: flex-end;
 	gap: 0.4rem;
 }
+.rows-per-page {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	color: var(--text-muted);
+	font-size: 0.85rem;
+}
+.rows-per-page .filter-pill {
+	min-width: 2.4rem;
+}
 
 .sim-controls {
 	display: flex;
@@ -295,6 +305,18 @@ h1 {
 
 .transactions-table tr:hover td {
 	background: #f7fbfc;
+}
+.transactions-pagination {
+	margin-top: 0.9rem;
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 0.8rem;
+}
+.transactions-pagination .mono {
+	min-width: 5.4rem;
+	text-align: center;
+	color: var(--text-muted);
 }
 
 .txn-alert-yes {
