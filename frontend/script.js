@@ -240,10 +240,19 @@ function wireEvents() {
 			return;
 		}
 		state.filter = target.dataset.filter;
-		Array.from(elements.statusFilters.querySelectorAll(".filter-pill"))
-			.forEach((btn) => btn.classList.toggle("active", btn === target));
+		updateStatusFilterButtons();
 
 		renderAlertsList();
+	});
+
+	updateStatusFilterButtons();
+}
+
+function updateStatusFilterButtons() {
+	Array.from(elements.statusFilters.querySelectorAll(".filter-pill")).forEach((button) => {
+		const isActive = button.dataset.filter === state.filter;
+		button.classList.toggle("active", isActive);
+		button.setAttribute("aria-pressed", isActive ? "true" : "false");
 	});
 }
 
