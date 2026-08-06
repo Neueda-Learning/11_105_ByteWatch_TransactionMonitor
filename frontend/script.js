@@ -1,6 +1,6 @@
-const API_BASE = "http://localhost:8080/api/alerts";
-const SIMULATION_API_BASE = "http://localhost:8080/api/simulation";
-const TRANSACTIONS_API_BASE = "http://localhost:8080/api/transactions";
+const API_BASE = "/api/alerts";
+const SIMULATION_API_BASE = "/api/simulation";
+const TRANSACTIONS_API_BASE = "/api/transactions";
 
 const RULE_DEFINITIONS = {
 	2: "High Velocity: more than 3 transactions in 5 minutes",
