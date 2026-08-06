@@ -5,6 +5,8 @@ pipeline {
     environment {
         GIT_URL = 'https://github.com/Neueda-Learning/11_105_ByteWatch_TransactionMonitor.git'
         BRANCH = 'main'
+        COMPOSE_FILE = "${WORKSPACE}/docker-compose.yml"
+        COMPOSE_CMD = 'docker-compose'
     }
 
     stages {
@@ -31,9 +33,21 @@ pipeline {
             }
         }
 
+        stage('Preflight Checks') {
+            steps {
+                sh '''
+                    command -v "$COMPOSE_CMD" >/dev/null 2>&1
+                    echo "Workspace: $WORKSPACE"
+                    pwd
+                    ls -la
+                    test -f "$COMPOSE_FILE"
+                '''
+            }
+        }
+
         stage('Stop Existing Containers') {
             steps {
-                sh 'docker compose down || true'
+                sh '$COMPOSE_CMD -f "$COMPOSE_FILE" down || true'
             }
         }
 
@@ -41,7 +55,7 @@ pipeline {
             steps {
                 // Tests already passed in the previous stage, so the backend
                 // Dockerfile's own build step skips re-running them.
-                sh 'docker compose build --no-cache'
+                sh '$COMPOSE_CMD -f "$COMPOSE_FILE" build --no-cache'
             }
         }
 
@@ -50,7 +64,7 @@ pipeline {
                 // DB_PASSWORD is injected from Jenkins Credentials at deploy time —
                 // never written to this file or to build logs.
                 withCredentials([string(credentialsId: 'bytewatch-db-password', variable: 'DB_PASSWORD')]) {
-                    sh 'docker compose up -d'
+                    sh '$COMPOSE_CMD -f "$COMPOSE_FILE" up -d'
                 }
             }
         }
@@ -67,7 +81,7 @@ pipeline {
                         sleep 5
                     done
                     echo "Backend did not become healthy in time."
-                    docker compose logs backend
+                    $COMPOSE_CMD -f "$COMPOSE_FILE" logs backend
                     exit 1
                 '''
                 sh 'docker ps'
@@ -77,7 +91,7 @@ pipeline {
 
     post {
         failure {
-            echo 'Pipeline failed — leaving containers as-is for inspection. Run "docker compose logs" to debug.'
+            echo 'Pipeline failed — leaving containers as-is for inspection. Run "docker-compose -f <path-to-compose-file> logs" to debug.'
         }
         always {
             sh 'docker image prune -f || true'
