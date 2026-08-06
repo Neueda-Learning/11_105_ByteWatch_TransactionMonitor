@@ -1,9 +1,11 @@
 package org.ByteWatch.repository;
 
 import org.ByteWatch.model.Transaction;
+import org.ByteWatch.model.TransactionLiveViewDTO;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -42,4 +44,9 @@ public interface TransactionRepository {
      * made by the given payer in the given currency at or after {@code since}.
      */
     BigDecimal sumAmountByPayerAndCurrencySince(String payerAccNum, String currency, LocalDateTime since);
+
+    /**
+     * Realtime feed support: fetches latest transactions with an alert flag.
+     */
+    List<TransactionLiveViewDTO> findRecentTransactions(int limit);
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.ByteWatch.model.Alert;
 import org.ByteWatch.model.Transaction;
 import org.ByteWatch.service.AlertService;
+import org.ByteWatch.service.TransactionFeedService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -30,12 +31,14 @@ class TransactionControllerIntegrationTest {
     private ObjectMapper objectMapper;
 
     private AlertService alertService;
+    private TransactionFeedService transactionFeedService;
 
     @BeforeEach
     void setUp() {
         alertService = mock(AlertService.class);
+        transactionFeedService = mock(TransactionFeedService.class);
         objectMapper = new ObjectMapper().findAndRegisterModules();
-        mockMvc = MockMvcBuilders.standaloneSetup(new TransactionController(alertService)).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(new TransactionController(alertService, transactionFeedService)).build();
     }
 
     @Test

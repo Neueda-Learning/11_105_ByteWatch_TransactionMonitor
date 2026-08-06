@@ -4,6 +4,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import org.ByteWatch.model.Transaction;
+import org.ByteWatch.model.TransactionLiveViewDTO;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -35,6 +36,20 @@ public class JdbcTransactionRepositoryImpl implements TransactionRepository {
         txn.setStatus(rs.getString("status"));
         txn.setType(rs.getString("type"));
         return txn;
+    };
+
+    private static final RowMapper<TransactionLiveViewDTO> TRANSACTION_LIVE_VIEW_ROW_MAPPER = (rs, rowNum) -> {
+        TransactionLiveViewDTO dto = new TransactionLiveViewDTO();
+        dto.setTxnId(rs.getString("txn_id"));
+        dto.setTimestamp(rs.getTimestamp("timestamp").toLocalDateTime());
+        dto.setAmount(rs.getBigDecimal("amount"));
+        dto.setCurrency(rs.getString("currency"));
+        dto.setPayeeAccNum(rs.getString("payee_acc_num"));
+        dto.setPayerAccNum(rs.getString("payer_acc_num"));
+        dto.setStatus(rs.getString("status"));
+        dto.setType(rs.getString("type"));
+        dto.setHasAlert(rs.getBoolean("has_alert"));
+        return dto;
     };
 
     @Override
@@ -86,5 +101,15 @@ public class JdbcTransactionRepositoryImpl implements TransactionRepository {
                 currency,
                 Timestamp.valueOf(since));
         return sum == null ? BigDecimal.ZERO : sum;
+    }
+
+    @Override
+    public List<TransactionLiveViewDTO> findRecentTransactions(int limit) {
+        String sql = "SELECT t.txn_id, t.timestamp, t.amount, t.currency, t.payee_acc_num, t.payer_acc_num, t.status, t.type, " +
+                "EXISTS (SELECT 1 FROM alerts a WHERE a.txn_id = t.txn_id) AS has_alert " +
+                "FROM transactions t " +
+                "ORDER BY t.timestamp DESC " +
+                "LIMIT ?";
+        return jdbcTemplate.query(sql, TRANSACTION_LIVE_VIEW_ROW_MAPPER, limit);
     }
 }

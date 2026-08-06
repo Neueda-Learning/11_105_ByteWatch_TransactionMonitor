@@ -1,5 +1,6 @@
 const API_BASE = "http://localhost:8080/api/alerts";
 const SIMULATION_API_BASE = "http://localhost:8080/api/simulation";
+const TRANSACTIONS_API_BASE = "http://localhost:8080/api/transactions";
 
 const RULE_DEFINITIONS = {
 	2: "High Velocity: more than 3 transactions in 5 minutes",
@@ -131,6 +132,10 @@ const state = {
 	usingDemoData: false,
 	loading: false,
 	autoAcknowledgeInProgress: false,
+	activeView: "dashboard",
+	transactions: [],
+	transactionsLoading: false,
+	transactionsPollTimer: null,
 	simulationRunning: false,
 	simulationStatusTimer: null,
 	autoRefreshTimer: null
@@ -138,6 +143,13 @@ const state = {
 
 const elements = {
 	refreshBtn: document.getElementById("refreshBtn"),
+	sideNav: document.getElementById("sideNav"),
+	dashboardView: document.getElementById("dashboardView"),
+	transactionsView: document.getElementById("transactionsView"),
+	transactionsRefreshBtn: document.getElementById("transactionsRefreshBtn"),
+	transactionsStatusText: document.getElementById("transactionsStatusText"),
+	transactionsCount: document.getElementById("transactionsCount"),
+	transactionsTableBody: document.getElementById("transactionsTableBody"),
 	simStartBtn: document.getElementById("simStartBtn"),
 	simStopBtn: document.getElementById("simStopBtn"),
 	simMinDelay: document.getElementById("simMinDelay"),
@@ -170,6 +182,7 @@ init();
 
 async function init() {
 	wireEvents();
+	switchView("dashboard");
 	await loadAlerts();
 	await loadSimulationStatus(true);
 	startSimulationStatusPolling();
@@ -177,8 +190,17 @@ async function init() {
 
 function wireEvents() {
 	elements.refreshBtn.addEventListener("click", () => loadAlerts(true));
+	elements.transactionsRefreshBtn.addEventListener("click", () => loadTransactions(true));
 	elements.simStartBtn.addEventListener("click", () => startSimulationFeed());
 	elements.simStopBtn.addEventListener("click", () => stopSimulationFeed());
+
+	elements.sideNav.addEventListener("click", (event) => {
+		const target = event.target.closest("button[data-view]");
+		if (!target) {
+			return;
+		}
+		switchView(target.dataset.view);
+	});
 
 	elements.searchInput.addEventListener("input", (event) => {
 		state.search = event.target.value.trim().toLowerCase();
@@ -191,12 +213,108 @@ function wireEvents() {
 			return;
 		}
 		state.filter = target.dataset.filter;
-
 		Array.from(elements.statusFilters.querySelectorAll(".filter-pill"))
 			.forEach((btn) => btn.classList.toggle("active", btn === target));
 
 		renderAlertsList();
 	});
+}
+
+function switchView(view) {
+	state.activeView = view === "transactions" ? "transactions" : "dashboard";
+
+	elements.dashboardView.classList.toggle("hidden", state.activeView !== "dashboard");
+	elements.transactionsView.classList.toggle("hidden", state.activeView !== "transactions");
+
+	Array.from(elements.sideNav.querySelectorAll(".side-link")).forEach((button) => {
+		button.classList.toggle("active", button.dataset.view === state.activeView);
+	});
+
+	if (state.activeView === "transactions") {
+		loadTransactions(false);
+		startTransactionsPolling();
+	} else {
+		stopTransactionsPolling();
+	}
+}
+
+function startTransactionsPolling() {
+	if (state.transactionsPollTimer) {
+		return;
+	}
+	state.transactionsPollTimer = setInterval(() => {
+		if (!state.transactionsLoading && state.activeView === "transactions") {
+			loadTransactions(false);
+		}
+	}, 3000);
+}
+
+function stopTransactionsPolling() {
+	if (!state.transactionsPollTimer) {
+		return;
+	}
+	clearInterval(state.transactionsPollTimer);
+	state.transactionsPollTimer = null;
+}
+
+async function loadTransactions(showToastOnSuccess) {
+	state.transactionsLoading = true;
+	elements.transactionsRefreshBtn.disabled = true;
+	elements.transactionsStatusText.textContent = "Refreshing...";
+
+	try {
+		const response = await fetch(`${TRANSACTIONS_API_BASE}/live?limit=60`);
+		if (!response.ok) {
+			throw new Error(`Failed to fetch transactions (${response.status})`);
+		}
+		const data = await response.json();
+		state.transactions = Array.isArray(data) ? data : [];
+		renderTransactionsTable();
+		elements.transactionsStatusText.textContent = `Live · ${state.transactions.length} rows`;
+		if (showToastOnSuccess) {
+			showToast("Transactions refreshed.");
+		}
+	} catch (error) {
+		elements.transactionsStatusText.textContent = "Unavailable";
+		elements.transactionsTableBody.innerHTML =
+			'<tr><td colspan="8" class="empty-list">Could not load transactions feed.</td></tr>';
+		if (showToastOnSuccess) {
+			showToast(error.message);
+		}
+	} finally {
+		state.transactionsLoading = false;
+		elements.transactionsRefreshBtn.disabled = false;
+	}
+}
+
+function renderTransactionsTable() {
+	elements.transactionsCount.textContent = String(state.transactions.length);
+
+	if (!state.transactions.length) {
+		elements.transactionsTableBody.innerHTML =
+			'<tr><td colspan="8" class="empty-list">No recent transactions found.</td></tr>';
+		return;
+	}
+
+	elements.transactionsTableBody.innerHTML = state.transactions
+		.map((transaction) => {
+			const hasAlert = Boolean(transaction.hasAlert);
+			const alertClass = hasAlert ? "txn-alert-yes" : "txn-alert-no";
+			const alertLabel = hasAlert ? "Yes" : "No";
+			return `
+				<tr>
+					<td>${escapeHtml(formatDateTime(transaction.timestamp))}</td>
+					<td>${escapeHtml(transaction.txnId || "-")}</td>
+					<td>${escapeHtml(transaction.payerAccNum || "-")}</td>
+					<td>${escapeHtml(transaction.payeeAccNum || "-")}</td>
+					<td>${escapeHtml(formatAmount(transaction.amount, transaction.currency))}</td>
+					<td>${escapeHtml(transaction.type || "-")}</td>
+					<td>${escapeHtml(transaction.status || "-")}</td>
+					<td class="${alertClass}">${alertLabel}</td>
+				</tr>
+			`;
+		})
+		.join("");
 }
 
 function startSimulationStatusPolling() {
