@@ -9,9 +9,11 @@ import org.ByteWatch.service.AlertService;
 import org.ByteWatch.service.TransactionFeedService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -37,26 +39,37 @@ class TransactionControllerIntegrationTest {
 
     private AlertService alertService;
     private TransactionFeedService transactionFeedService;
+    private LocalValidatorFactoryBean validator;
 
     @BeforeEach
     void setUp() {
         alertService = mock(AlertService.class);
         transactionFeedService = mock(TransactionFeedService.class);
         objectMapper = new ObjectMapper().findAndRegisterModules();
-        mockMvc = MockMvcBuilders.standaloneSetup(new TransactionController(alertService, transactionFeedService)).build();
+        validator = new LocalValidatorFactoryBean();
+        validator.afterPropertiesSet();
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(new TransactionController(alertService, transactionFeedService))
+                .setValidator(validator)
+                .build();
+    }
+
+    private Transaction buildValidTransaction() {
+        Transaction txn = new Transaction();
+        txn.setTxnId("TXN-INT-001");
+        txn.setTimestamp(LocalDateTime.of(2026, 8, 3, 18, 10));
+        txn.setAmount(new BigDecimal("15000.00"));
+        txn.setCurrency("USD");
+        txn.setPayeeAccNum("ACC-2001");
+        txn.setPayerAccNum("ACC-1001");
+        txn.setStatus("COMPLETED");
+        txn.setType("TRANSFER");
+        return txn;
     }
 
     @Test
     void submitTransaction_returns201AndIntakeResult() throws Exception {
-        Transaction requestTxn = new Transaction();
-        requestTxn.setTxnId("TXN-INT-001");
-        requestTxn.setTimestamp(LocalDateTime.of(2026, 8, 3, 18, 10));
-        requestTxn.setAmount(new BigDecimal("15000.00"));
-        requestTxn.setCurrency("USD");
-        requestTxn.setPayeeAccNum("ACC-2001");
-        requestTxn.setPayerAccNum("ACC-1001");
-        requestTxn.setStatus("COMPLETED");
-        requestTxn.setType("TRANSFER");
+        Transaction requestTxn = buildValidTransaction();
 
         Alert alert = new Alert();
         alert.setId(101L);
@@ -77,6 +90,46 @@ class TransactionControllerIntegrationTest {
                 .andExpect(jsonPath("$.severityLevel").value("MEDIUM"))
                 .andExpect(jsonPath("$.transaction.txnId").value("TXN-INT-001"))
                 .andExpect(jsonPath("$.alert.id").value(101));
+    }
+
+    @Test
+    void submitTransaction_withInvalidPayload_returns400WithFieldErrors() throws Exception {
+        String invalidPayload = """
+                {
+                  "txnId": "",
+                  "amount": -500,
+                  "currency": "XYZ",
+                  "payeeAccNum": "",
+                  "payerAccNum": "",
+                  "status": "COMPLETED",
+                  "type": "TRANSFER"
+                }
+                """;
+
+        mockMvc.perform(post("/api/transactions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidPayload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.txnId").exists())
+                .andExpect(jsonPath("$.fieldErrors.timestamp").exists())
+                .andExpect(jsonPath("$.fieldErrors.amount").exists())
+                .andExpect(jsonPath("$.fieldErrors.currency").exists())
+                .andExpect(jsonPath("$.fieldErrors.payeeAccNum").exists())
+                .andExpect(jsonPath("$.fieldErrors.payerAccNum").exists());
+    }
+
+    @Test
+    void submitTransaction_withDuplicateTxnId_returns409() throws Exception {
+        Transaction requestTxn = buildValidTransaction();
+        when(alertService.processTransaction(any(Transaction.class)))
+                .thenThrow(new DuplicateKeyException("duplicate txn id"));
+
+        mockMvc.perform(post("/api/transactions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestTxn)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("Transaction with the same txnId already exists"));
     }
 
     @Test

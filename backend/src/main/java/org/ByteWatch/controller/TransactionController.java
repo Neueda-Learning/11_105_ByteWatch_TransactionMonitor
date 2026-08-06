@@ -1,7 +1,10 @@
 package org.ByteWatch.controller;
 
+import jakarta.validation.Valid;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +18,7 @@ import org.ByteWatch.model.TransactionLivePageResponse;
 import org.ByteWatch.service.AlertService;
 import org.ByteWatch.service.TransactionFeedService;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -50,10 +54,28 @@ public class TransactionController {
      * automatically opens an alert if any rule was triggered.
      */
     @PostMapping
-    public ResponseEntity<AlertService.TransactionIntakeResult> submitTransaction(@RequestBody Transaction transaction) {
+    public ResponseEntity<AlertService.TransactionIntakeResult> submitTransaction(@Valid @RequestBody Transaction transaction) {
         // Single entry point for Stage 2 ingestion + Stage 3 rule evaluation.
         AlertService.TransactionIntakeResult result = alertService.processTransaction(transaction);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException ex) {
+        Map<String, String> fieldErrors = new LinkedHashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+                fieldErrors.putIfAbsent(error.getField(), error.getDefaultMessage()));
+
+        return ResponseEntity.badRequest().body(Map.of(
+                "error", "Validation failed",
+                "fieldErrors", fieldErrors
+        ));
+    }
+
+    @ExceptionHandler(DuplicateKeyException.class)
+    public ResponseEntity<Map<String, String>> handleDuplicateTransaction(DuplicateKeyException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "Transaction with the same txnId already exists"));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
